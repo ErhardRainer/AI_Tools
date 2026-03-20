@@ -1,0 +1,42 @@
+{
+  "default_provider": "openai",
+
+  "providers": {
+    "openai": {
+      "api_key": "sk-DEIN_OPENAI_KEY",
+      "model": "dall-e-3"
+    },
+    "google": {
+      "api_key": "DEIN_GOOGLE_AI_KEY",
+      "model": "imagen-3.0-generate-002"
+    },
+    "stability": {
+      "api_key": "sk-DEIN_STABILITY_KEY",
+      "model": "core"
+    },
+    "fal": {
+      "api_key": "DEIN_FAL_KEY",
+      "model": "fal-ai/flux/dev"
+    }
+  },
+
+  "presets": {
+    "quality":  { "provider": "openai",    "model": "dall-e-3" },
+    "fast":     { "provider": "fal",       "model": "fal-ai/flux/schnell" },
+    "flux":     { "provider": "fal",       "model": "fal-ai/flux/dev" },
+    "flux-pro": { "provider": "fal",       "model": "fal-ai/flux-pro" },
+    "sd3":      { "provider": "stability", "model": "sd3-large" },
+    "ultra":    { "provider": "stability", "model": "ultra" },
+    "imagen":   { "provider": "google",    "model": "imagen-3.0-generate-002" },
+    "imagen-fast": { "provider": "google", "model": "imagen-3.0-fast-generate-001" }
+  },
+
+  "defaults": {
+    "prompt": "",
+    "n": 1,
+    "size": "1024x1024",
+    "quality": "standard",
+    "aspect_ratio": "1:1",
+    "output_format": "png"
+  }
+}

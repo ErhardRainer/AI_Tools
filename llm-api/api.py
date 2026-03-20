@@ -1,12 +1,12 @@
 """
-LLM API — FastAPI-Wrapper für den LLM Client.
+Media API — FastAPI-Wrapper für LLM_Client und ImageGen.
 
-Stellt alle konfigurierten LLM-Provider als REST-API bereit.
-Konfiguration: config.json (identisch zu LLM_Client/config.json)
+Stellt Text- und Bildgenerierung als REST-API bereit.
 
 Umgebungsvariablen:
-  LLM_CONFIG   Pfad zur config.json (Standard: ../LLM_Client/config.json)
-  API_KEY      Optionaler HTTP-API-Key (leer = keine Authentifizierung)
+  LLM_CONFIG    Pfad zur LLM config.json   (Standard: ../LLM_Client/config.json)
+  IMAGE_CONFIG  Pfad zur ImageGen config.json (Standard: ../ImageGen/config.json)
+  API_KEY       Optionaler HTTP-API-Key (leer = keine Authentifizierung)
 
 Starten:
   uvicorn api:app --reload
@@ -35,29 +35,51 @@ from LLM_Client import (
     resolve_preset,
 )
 
+# ImageGen — optional (nicht verfügbar wenn nicht installiert)
+try:
+    from ImageGen import (
+        build_provider as image_build_provider,
+        load_config as image_load_config,
+        mapping_reload as image_mapping_reload,
+        PROVIDERS as IMAGE_PROVIDERS,
+        PRESET_REGISTRY as IMAGE_PRESET_REGISTRY,
+    )
+    _IMAGE_GEN_AVAILABLE = True
+except ImportError:
+    _IMAGE_GEN_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Konfiguration
 # ---------------------------------------------------------------------------
 
-_DEFAULT_CONFIG = str(Path(__file__).parent.parent / "LLM_Client" / "config.json")
-CONFIG_PATH = os.environ.get("LLM_CONFIG", _DEFAULT_CONFIG)
-API_KEY = os.environ.get("API_KEY", "")  # leer → keine Authentifizierung erforderlich
+_DEFAULT_LLM_CONFIG   = str(Path(__file__).parent.parent / "LLM_Client" / "config.json")
+_DEFAULT_IMAGE_CONFIG = str(Path(__file__).parent.parent / "ImageGen"  / "config.json")
+
+CONFIG_PATH       = os.environ.get("LLM_CONFIG",   _DEFAULT_LLM_CONFIG)
+IMAGE_CONFIG_PATH = os.environ.get("IMAGE_CONFIG", _DEFAULT_IMAGE_CONFIG)
+API_KEY           = os.environ.get("API_KEY", "")
 
 config = load_config(CONFIG_PATH)
 mapping_reload(config)
+
+image_config: dict = {}
+if _IMAGE_GEN_AVAILABLE and Path(IMAGE_CONFIG_PATH).exists():
+    image_config = image_load_config(IMAGE_CONFIG_PATH)
+    image_mapping_reload(image_config)
 
 # ---------------------------------------------------------------------------
 # FastAPI-App
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="LLM API",
+    title="Media API",
     description=(
-        "REST-API für den LLM Client.\n\n"
-        "Unterstützte Provider: OpenAI, Claude, Gemini, Grok, Kimi, DeepSeek, Groq, Mistral.\n\n"
+        "REST-API für LLM_Client und ImageGen.\n\n"
+        "**Text-Endpunkte:** OpenAI, Claude, Gemini, Grok, Kimi, DeepSeek, Groq, Mistral.\n\n"
+        "**Bild-Endpunkte:** DALL-E, Google Imagen, Stability AI, fal.ai FLUX.\n\n"
         "Authentifizierung: Header `X-API-Key` (nur wenn Umgebungsvariable `API_KEY` gesetzt)."
     ),
-    version="1.0.0",
+    version="2.0.0",
 )
 
 # ---------------------------------------------------------------------------
@@ -140,6 +162,54 @@ class ProvidersResponse(BaseModel):
     default_provider: str | None
 
 
+# --- ImageGen-Modelle -------------------------------------------------------
+
+class ImageRequest(BaseModel):
+    provider: str | None = Field(
+        None,
+        description="Provider: openai, google, stability, fal.",
+        examples=["openai", "fal"],
+    )
+    preset: str | None = Field(
+        None,
+        description="Preset-Alias aus ImageGen/config.json (z.B. flux, sd3, quality).",
+        examples=["flux", "sd3"],
+    )
+    model: str | None = Field(
+        None,
+        description="Modell überschreiben (optional).",
+        examples=["dall-e-3", "fal-ai/flux-pro"],
+    )
+    prompt: str = Field(
+        ...,
+        description="Bild-Prompt.",
+        examples=["A serene mountain lake at golden hour, photorealistic"],
+    )
+    n: int = Field(1, ge=1, le=10, description="Anzahl der Bilder (1–10).")
+    # DALL-E spezifisch
+    size: str | None = Field(None, description="Bildgröße (DALL-E): 1024x1024, 1792x1024, 1024x1792.")
+    quality: str | None = Field(None, description="Qualität (DALL-E 3): standard oder hd.")
+    # Stability / Google spezifisch
+    aspect_ratio: str | None = Field(None, description="Seitenverhältnis: 1:1, 16:9, 9:16, 4:3, 3:4.")
+    # fal.ai spezifisch
+    image_size: str | None = Field(
+        None,
+        description="Bildgröße für fal.ai: square_hd, landscape_4_3, landscape_16_9, portrait_16_9.",
+    )
+
+
+class ImageDataResponse(BaseModel):
+    url: str | None = None
+    b64_json: str | None = None
+
+
+class ImageResponse(BaseModel):
+    provider: str
+    model: str
+    revised_prompt: str | None = None
+    images: list[ImageDataResponse]
+
+
 # ---------------------------------------------------------------------------
 # Endpunkte
 # ---------------------------------------------------------------------------
@@ -153,20 +223,31 @@ def health() -> dict:
 
 @app.get(
     "/providers",
-    response_model=ProvidersResponse,
     tags=["System"],
     summary="Verfügbare Provider und Presets",
 )
-def list_providers() -> ProvidersResponse:
-    """Listet alle registrierten Provider und konfigurierten Preset-Aliases."""
-    return ProvidersResponse(
-        providers=list(PROVIDERS.keys()),
-        presets={
-            name: {"provider": v["provider"], "model": v["model"]}
-            for name, v in PRESET_REGISTRY.items()
+def list_providers() -> dict:
+    """Listet alle registrierten Text- und Bildgenerierungs-Provider."""
+    result: dict = {
+        "text": {
+            "providers": list(PROVIDERS.keys()),
+            "presets": {
+                name: {"provider": v["provider"], "model": v["model"]}
+                for name, v in PRESET_REGISTRY.items()
+            },
+            "default_provider": config.get("default_provider"),
         },
-        default_provider=config.get("default_provider"),
-    )
+    }
+    if _IMAGE_GEN_AVAILABLE:
+        result["image"] = {
+            "providers": list(IMAGE_PROVIDERS.keys()),
+            "presets": {
+                name: {"provider": v["provider"], "model": v["model"]}
+                for name, v in IMAGE_PRESET_REGISTRY.items()
+            },
+            "default_provider": image_config.get("default_provider"),
+        }
+    return result
 
 
 @app.post(
@@ -251,4 +332,106 @@ def chat(
         provider=provider_name,
         model=provider.model,
         response=response_text,
+    )
+
+
+@app.post(
+    "/image",
+    response_model=ImageResponse,
+    tags=["Bild"],
+    summary="Bild generieren",
+)
+def generate_image(
+    req: ImageRequest,
+    _: None = Security(_verify_api_key),
+) -> ImageResponse:
+    """
+    Generiert ein oder mehrere Bilder aus einem Text-Prompt.
+
+    **Provider-Auflösung (Priorität):**
+    1. `provider` (explizit)
+    2. `preset` → löst Provider + Modell auf
+    3. `default_provider` aus ImageGen/config.json
+
+    **Provider-spezifische Parameter:**
+    - DALL-E:    `size`, `quality`
+    - Stability: `aspect_ratio`
+    - Google:    `aspect_ratio`
+    - fal.ai:    `image_size`
+    """
+    if not _IMAGE_GEN_AVAILABLE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ImageGen nicht verfügbar. Installation: pip install '.[imagegen]'",
+        )
+    if not image_config:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"ImageGen config nicht gefunden: {IMAGE_CONFIG_PATH}",
+        )
+
+    provider_name = req.provider
+    model_override = req.model
+
+    if req.preset and not provider_name:
+        try:
+            provider_name, preset_model = IMAGE_PRESET_REGISTRY[req.preset]["provider"], \
+                                          IMAGE_PRESET_REGISTRY[req.preset].get("model", "")
+            if not model_override:
+                model_override = preset_model or None
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unbekanntes Bild-Preset: '{req.preset}'. "
+                f"Verfügbar: {list(IMAGE_PRESET_REGISTRY.keys())}",
+            )
+
+    if not provider_name:
+        provider_name = image_config.get("default_provider")
+    if not provider_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kein Provider angegeben und kein default_provider in ImageGen/config.json.",
+        )
+
+    try:
+        provider = image_build_provider(provider_name, image_config, model_override=model_override)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    # Provider-spezifische Argumente zusammenstellen
+    kwargs: dict = {"n": req.n}
+    provider_cls_name = type(provider).__name__
+
+    if provider_cls_name == "OpenAIImageProvider":
+        if req.size:
+            kwargs["size"] = req.size
+        if req.quality:
+            kwargs["quality"] = req.quality
+    elif provider_cls_name in ("StabilityProvider", "GoogleImageProvider"):
+        if req.aspect_ratio:
+            kwargs["aspect_ratio"] = req.aspect_ratio
+    elif provider_cls_name == "FalProvider":
+        if req.image_size:
+            kwargs["image_size"] = req.image_size
+        elif req.aspect_ratio:
+            _ar_map = {
+                "1:1": "square_hd", "16:9": "landscape_16_9",
+                "9:16": "portrait_16_9", "4:3": "landscape_4_3", "3:4": "portrait_4_3",
+            }
+            kwargs["image_size"] = _ar_map.get(req.aspect_ratio, req.aspect_ratio)
+
+    try:
+        result = provider.generate(req.prompt, **kwargs)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Bildgenerierung fehlgeschlagen ({provider_name}): {exc}",
+        )
+
+    return ImageResponse(
+        provider=result.provider,
+        model=result.model,
+        revised_prompt=result.revised_prompt,
+        images=[ImageDataResponse(url=img.url, b64_json=img.b64_json) for img in result.images],
     )

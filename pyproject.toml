@@ -3,25 +3,28 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.backends.legacy:build"
 
 [project]
-name = "llm-client"
-version = "0.1.0"
-description = "Unified CLI and Python interface for multiple LLM providers"
+name = "llm-media-client"
+version = "0.2.0"
+description = "Unified CLI and Python interface for LLM text and image generation"
 requires-python = ">=3.10"
 dependencies = ["openai"]
 
 [project.optional-dependencies]
 # pip install ".[claude]"     — Anthropic Claude
 claude = ["anthropic"]
-# pip install ".[gemini]"     — Google Gemini
+# pip install ".[gemini]"     — Google Gemini (Text)
 gemini = ["google-generativeai"]
 # pip install ".[url-fetch]"  — PDF/HTML/TXT aus URLs laden (fetch_context_urls)
 url-fetch = ["requests", "pypdf", "beautifulsoup4"]
-# pip install ".[all]"        — alle SDKs + URL-Fetch
-all = ["anthropic", "google-generativeai", "requests", "pypdf", "beautifulsoup4"]
+# pip install ".[imagegen]"   — Bildgenerierung (Stability, fal.ai via requests; Google Imagen)
+imagegen = ["requests", "google-genai"]
+# pip install ".[all]"        — alle SDKs + URL-Fetch + ImageGen
+all = ["anthropic", "google-generativeai", "google-genai", "requests", "pypdf", "beautifulsoup4"]
 
 [project.scripts]
 llm-client = "LLM_Client.llm_client:main"
+image-gen   = "ImageGen.image_gen:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["LLM_Client*"]
+include = ["LLM_Client*", "ImageGen*"]

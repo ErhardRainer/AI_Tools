@@ -12,24 +12,27 @@ This repository (`OpenAI`) contains Python-based tools for working with the Open
 
 ```
 OpenAI/
-├── README.md                          # Brief German description
+├── README.md                          # Repository-Übersicht
 ├── CLAUDE.md                          # This file
 ├── .gitignore                         # Excludes real config.json and secrets
 ├── pyproject.toml                     # Package build config (pip install .)
 ├── Assistant_AI/
 │   └── Assistant_AI.ipynb             # Assistants API notebook (47 cells)
-├── LLM_Client/
-│   ├── llm_client.py                  # Multi-provider LLM client script
-│   └── config.template.json           # Config template (copy → config.json)
-└── llm-api/
-    ├── api.py                         # FastAPI-Wrapper für LLM_Client
-    ├── Dockerfile                     # Container-Build (Kontext: Repo-Root)
-    ├── docker-compose.yml             # Stack mit config.json-Volume
-    ├── requirements.txt               # fastapi, uvicorn
+├── LLM_Client/                        # Text → Text (8 Provider)
+│   ├── llm_client.py
+│   └── config.template.json
+├── ImageGen/                          # Text → Bild (4 Provider)
+│   ├── image_gen.py
+│   └── config.template.json
+└── llm-api/                           # FastAPI: /chat + /image
+    ├── api.py
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── requirements.txt
     ├── examples/
-    │   └── requests.ps1               # PowerShell curl-Beispiele
+    │   └── requests.ps1
     └── tests/
-        └── test_api.py                # Unit-Tests (TestClient, kein echter API-Call)
+        └── test_api.py
 ```
 
 ---
@@ -303,6 +306,47 @@ Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selb
 
 ---
 
+## ImageGen — Multi-Provider Bildgenerierung
+
+`ImageGen/` ist ein installierbares Python-Paket für Bildgenerierung (Text → Bild). Gleiche Architektur wie `LLM_Client`.
+
+### Unterstützte Provider
+
+| Provider | Klasse | Standard-Modell | SDK |
+|---|---|---|---|
+| `openai` | `OpenAIImageProvider` | `dall-e-3` | `pip install openai` |
+| `google` | `GoogleImageProvider` | `imagen-3.0-generate-002` | `pip install google-genai` |
+| `stability` | `StabilityProvider` | `core` | `pip install requests` (REST API) |
+| `fal` | `FalProvider` | `fal-ai/flux/dev` | `pip install requests` (REST API) |
+
+### Installation
+
+```bash
+pip install ".[imagegen]"   # requests + google-genai
+pip install openai           # zusätzlich für DALL-E
+```
+
+### Architecture
+
+- `ImageData` — einzelnes Bild: `url`, `b64_json`, `save(path)`
+- `ImageResult` — Ergebnis: `provider`, `model`, `images[]`, `revised_prompt`, `save_all(pattern)`
+- `OpenAIImageProvider` — DALL-E 3/2; `.generate(prompt, size, quality, n, response_format)`
+- `GoogleImageProvider` — Imagen 3; `.generate(prompt, n, aspect_ratio)` via `google-genai`
+- `StabilityProvider` — Core/SD3/Ultra via REST; `.generate(prompt, aspect_ratio, negative_prompt, n)`
+- `FalProvider` — FLUX via REST; `.generate(prompt, image_size, n)`
+- `PROVIDERS` dict — Registry `name → Klasse`
+- `build_provider(name, config, model_override)` — Factory
+- `mapping_reload(source)` / `resolve_preset(name)` — Preset-System (identisch zu LLM_Client)
+- `main()` — CLI mit `--prompt`, `--provider`, `--preset`, `--model`, `--output`, `--n`, `--size`, `--quality`, `--aspect-ratio`
+
+### Tests
+
+```bash
+python ImageGen/unittest/run_all_tests.py
+```
+
+---
+
 ## LLM API — FastAPI-Wrapper
 
 `llm-api/` stellt alle LLM_Client-Provider als REST-API bereit, deploybar als Docker-Container.
@@ -339,8 +383,9 @@ docker compose -f llm-api/docker-compose.yml up --build
 - `ChatRequest` / `ChatResponse` — Pydantic-Modelle
 - `_verify_api_key()` — optionale HTTP-Auth via `X-API-Key`-Header
 - `GET /health` — immer offen, kein Auth
-- `GET /providers` — listet `PROVIDERS` und `PRESET_REGISTRY`
+- `GET /providers` — listet Text- und Bild-Provider sowie Presets
 - `POST /chat` — löst Provider/Preset auf → `build_provider()` → `provider.send()` → optional `extract_json()`
+- `POST /image` — löst Bild-Provider/Preset auf → `image_build_provider()` → `provider.generate()` → `ImageResponse`
 
 ### Tests
 

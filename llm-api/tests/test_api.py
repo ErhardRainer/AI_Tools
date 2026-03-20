@@ -81,20 +81,20 @@ class TestProviders(unittest.TestCase):
     def test_contains_provider_list(self):
         resp = client.get("/providers")
         data = resp.json()
-        self.assertIn("providers", data)
-        self.assertIsInstance(data["providers"], list)
-        self.assertIn("openai", data["providers"])
+        self.assertIn("text", data)
+        self.assertIn("providers", data["text"])
+        self.assertIn("openai", data["text"]["providers"])
 
     def test_contains_presets(self):
         resp = client.get("/providers")
         data = resp.json()
-        self.assertIn("presets", data)
-        self.assertIn("fast", data["presets"])
+        self.assertIn("presets", data["text"])
+        self.assertIn("fast", data["text"]["presets"])
 
     def test_contains_default_provider(self):
         resp = client.get("/providers")
         data = resp.json()
-        self.assertIn("default_provider", data)
+        self.assertIn("default_provider", data["text"])
 
 
 # ---------------------------------------------------------------------------

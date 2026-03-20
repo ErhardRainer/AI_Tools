@@ -51,8 +51,9 @@ docker run \
 | Methode | Pfad | Beschreibung |
 |---|---|---|
 | `GET` | `/health` | Liveness-Check |
-| `GET` | `/providers` | Verfügbare Provider und Presets |
-| `POST` | `/chat` | Prompt an LLM senden |
+| `GET` | `/providers` | Text- und Bild-Provider + Presets |
+| `POST` | `/chat` | Text-Prompt an LLM senden |
+| `POST` | `/image` | Bild aus Text-Prompt generieren |
 | `GET` | `/docs` | Interaktive Swagger-UI |
 | `GET` | `/redoc` | ReDoc-Dokumentation |
 
@@ -220,6 +221,48 @@ python -m pytest llm-api/tests/ -v
 # oder
 python llm-api/tests/test_api.py
 ```
+
+---
+
+## POST /image
+
+```json
+{
+  "provider":     "openai",
+  "preset":       null,
+  "model":        null,
+  "prompt":       "A serene mountain lake at golden hour, photorealistic",
+  "n":            1,
+  "size":         "1024x1024",
+  "quality":      "hd",
+  "aspect_ratio": null,
+  "image_size":   null
+}
+```
+
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `prompt` | **ja** | Bild-Prompt |
+| `provider` | nein | openai, google, stability, fal |
+| `preset` | nein | Preset-Alias aus ImageGen/config.json |
+| `model` | nein | Modell überschreiben |
+| `n` | nein | Anzahl Bilder (1–10) |
+| `size` | nein | Bildgröße, z.B. `1024x1024` (nur DALL-E) |
+| `quality` | nein | `standard` oder `hd` (nur DALL-E 3) |
+| `aspect_ratio` | nein | `1:1`, `16:9`, `9:16` usw. (Stability, Google) |
+| `image_size` | nein | `landscape_4_3`, `square_hd` usw. (fal.ai) |
+
+Response:
+```json
+{
+  "provider": "openai",
+  "model": "dall-e-3",
+  "revised_prompt": "A serene alpine lake reflecting golden sunset colors...",
+  "images": [{"url": "https://...", "b64_json": null}]
+}
+```
+
+Benötigt: `ImageGen/config.json` (Env-Variable `IMAGE_CONFIG`).
 
 ---
 
