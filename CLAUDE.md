@@ -110,11 +110,18 @@ The run polling pattern waits until `run.status` is `"completed"` or `"failed"`.
 
 ### Supported Providers
 
-| Provider | SDK | Install |
+| Provider | Standard-Modell | SDK / Abhängigkeit |
 |---|---|---|
-| `openai` | `openai` | `pip install openai` |
-| `claude` | `anthropic` | `pip install anthropic` |
-| `gemini` | `google-generativeai` | `pip install google-generativeai` |
+| `openai` | `gpt-4o` | `pip install openai` |
+| `claude` | `claude-sonnet-4-6` | `pip install anthropic` |
+| `gemini` | `gemini-2.0-flash` | `pip install google-generativeai` |
+| `grok` | `grok-3` | `pip install openai` (OpenAI-kompatibel) |
+| `kimi` | `kimi-k2` | `pip install openai` (OpenAI-kompatibel) |
+| `deepseek` | `deepseek-chat` | `pip install openai` (OpenAI-kompatibel) |
+| `groq` | `llama-3.3-70b-versatile` | `pip install openai` (OpenAI-kompatibel) |
+| `mistral` | `mistral-large-latest` | `pip install openai` (OpenAI-kompatibel) |
+
+Grok, Kimi, DeepSeek, Groq und Mistral verwenden intern `_OpenAICompatibleProvider` — sie setzen nur `BASE_URL` und `DEFAULT_MODEL` und benötigen kein eigenes SDK.
 
 ### Setup
 
@@ -150,10 +157,14 @@ cp LLM_Client/config.template.json LLM_Client/config.json
 python LLM_Client/llm_client.py --config LLM_Client/config.json
 
 # Override provider at runtime
-python LLM_Client/llm_client.py --config LLM_Client/config.json --provider claude
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider grok
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider kimi
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider deepseek
 
 # Override provider and model
-python LLM_Client/llm_client.py --config LLM_Client/config.json --provider gemini --model gemini-2.0-pro
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider deepseek --model deepseek-reasoner
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider groq     --model gemma2-9b-it
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider mistral  --model codestral-latest
 ```
 
 ### Prompt flow
@@ -172,7 +183,10 @@ If `context` is empty, it is skipped entirely.
 
 - `load_config(path)` — reads JSON config
 - `get_nested(data, "a.b.c")` — dot-path accessor
-- `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider` — each has a `.send(system, context, task) → str` method
+- `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider` — native SDKs, each with `.send(system, context, task) → str`
+- `_OpenAICompatibleProvider` — base class for OpenAI-compatible APIs; subclasses set `BASE_URL` + `DEFAULT_MODEL`
+  - `GrokProvider` (api.x.ai/v1), `KimiProvider` (api.moonshot.cn/v1), `DeepSeekProvider` (api.deepseek.com), `GroqProvider` (api.groq.com/openai/v1), `MistralProvider` (api.mistral.ai/v1)
+- `PROVIDERS` dict — registry mapping provider name → class
 - `build_provider(name, config, model_override)` — factory that instantiates the right class
 - `main()` — CLI entry point with `argparse`
 

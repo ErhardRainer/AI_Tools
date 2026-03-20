@@ -2,18 +2,47 @@
   "default_provider": "openai",
 
   "providers": {
+
     "openai": {
       "api_key": "sk-...",
       "model": "gpt-4o"
     },
+
     "claude": {
       "api_key": "sk-ant-...",
       "model": "claude-sonnet-4-6"
     },
+
     "gemini": {
       "api_key": "AIza...",
       "model": "gemini-2.0-flash"
+    },
+
+    "grok": {
+      "api_key": "xai-...",
+      "model": "grok-3"
+    },
+
+    "kimi": {
+      "api_key": "sk-...",
+      "model": "kimi-k2"
+    },
+
+    "deepseek": {
+      "api_key": "sk-...",
+      "model": "deepseek-chat"
+    },
+
+    "groq": {
+      "api_key": "gsk_...",
+      "model": "llama-3.3-70b-versatile"
+    },
+
+    "mistral": {
+      "api_key": "...",
+      "model": "mistral-large-latest"
     }
+
   },
 
   "prompts": {
