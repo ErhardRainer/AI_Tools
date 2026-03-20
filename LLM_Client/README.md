@@ -1,6 +1,41 @@
 # LLM Client
 
-Ein Python-Script, das einen **System-Prompt**, **Kontext-Prompt** und **Aufgaben-Prompt** an verschiedene KI-Anbieter sendet. Alle API-Keys und Einstellungen werden aus einer JSON-Konfigurationsdatei gelesen — kein Hardcoding von Secrets.
+Ein Python-Paket, das einen **System-Prompt**, **Kontext-Prompt** und **Aufgaben-Prompt** an verschiedene KI-Anbieter sendet. Verwendbar als **Script**, **Python-Modul**, **installierbares CLI** oder **importierbare Bibliothek**. Alle API-Keys und Einstellungen werden aus einer JSON-Konfigurationsdatei gelesen — kein Hardcoding von Secrets.
+
+---
+
+## Drei Aufrufmöglichkeiten
+
+```bash
+# 1. Direktes Script (kein Install nötig)
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider grok
+
+# 2. Als Python-Modul (vom Repo-Root aus)
+python -m LLM_Client --config LLM_Client/config.json --provider grok
+
+# 3. Als installiertes CLI (nach: pip install .)
+llm-client --config LLM_Client/config.json --provider grok
+```
+
+## Als importierbare Bibliothek
+
+```python
+from LLM_Client import GrokProvider, build_provider, load_config
+
+# Provider direkt instanziieren
+provider = GrokProvider(api_key="xai-...", model="grok-3")
+antwort = provider.send(
+    system="Du bist ein hilfreicher Assistent.",
+    context="",
+    task="Erkläre Quantencomputing in drei Sätzen.",
+)
+print(antwort)
+
+# Oder über die Factory (liest config.json)
+config = load_config("LLM_Client/config.json")
+provider = build_provider("deepseek", config)
+print(provider.send("System", "", "Was ist 2+2?"))
+```
 
 ---
 
@@ -18,6 +53,30 @@ Ein Python-Script, das einen **System-Prompt**, **Kontext-Prompt** und **Aufgabe
 | `mistral` | `MistralProvider` | `mistral-large-latest` | console.mistral.ai |
 
 Grok, Kimi, DeepSeek, Groq und Mistral implementieren alle die OpenAI-kompatible Chat Completions API — sie benötigen **kein eigenes SDK**, nur das `openai`-Package.
+
+---
+
+## Installation
+
+### Option A — Paket installieren (empfohlen)
+
+```bash
+# Vom Repo-Root:
+pip install .                  # Basis (openai SDK, deckt 6 Provider ab)
+pip install ".[claude]"        # + anthropic
+pip install ".[gemini]"        # + google-generativeai
+pip install ".[all]"           # alle SDKs
+```
+
+Nach der Installation steht der CLI-Befehl `llm-client` überall zur Verfügung.
+
+### Option B — Direkt verwenden (kein Install)
+
+```bash
+pip install openai             # Mindestinstallation
+pip install anthropic          # für Claude
+pip install google-generativeai  # für Gemini
+```
 
 ---
 
@@ -304,13 +363,41 @@ python -m unittest discover -s LLM_Client/unittest -p "test_*.py" -v
 
 ---
 
+## Beispiel-Aufrufe (PowerShell)
+
+Im Ordner `examples/` liegt für jeden Provider ein PowerShell-Skript mit vordefinierten Variablen:
+
+```
+examples/
+├── run_openai.ps1
+├── run_claude.ps1
+├── run_gemini.ps1
+├── run_grok.ps1
+├── run_kimi.ps1
+├── run_deepseek.ps1
+├── run_groq.ps1
+└── run_mistral.ps1
+```
+
+Jedes Skript definiert `$Config`, `$Provider` und `$Model` als Variablen und zeigt alle drei Aufrufmöglichkeiten (Script / Modul / CLI). Einfach das passende Skript öffnen, Variablen anpassen und ausführen.
+
+```powershell
+# Ausführen (PowerShell):
+.\LLM_Client\examples\run_grok.ps1
+```
+
+---
+
 ## Dateien
 
 | Datei | Beschreibung |
 |---|---|
-| `llm_client.py` | Hauptscript |
+| `__init__.py` | Package-Init — re-exportiert public API |
+| `__main__.py` | Einstiegspunkt für `python -m LLM_Client` |
+| `llm_client.py` | Kernlogik: Provider-Klassen, Factory, CLI (`main()`) |
 | `config.template.json` | Konfigurationsvorlage — in `config.json` kopieren und befüllen |
 | `config.json` | Echte Konfiguration mit API-Keys (nicht im Repository, via `.gitignore` ausgeschlossen) |
+| `examples/` | PowerShell-Beispielskripte für jeden Provider |
 | `unittest/` | Unit-Tests für alle Provider (keine echten API-Calls erforderlich) |
 
 ---

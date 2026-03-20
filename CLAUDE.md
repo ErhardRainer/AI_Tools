@@ -104,9 +104,38 @@ The run polling pattern waits until `run.status` is `"completed"` or `"failed"`.
 
 ---
 
-## LLM_Client — Multi-Provider Script
+## LLM_Client — Multi-Provider Package
 
-`LLM_Client/llm_client.py` sends a **system prompt**, **context prompt**, and **task prompt** to one of three LLM providers via a unified interface. All keys and settings come from a JSON config file.
+`LLM_Client/` is an installable Python package. It sends a **system prompt**, **context prompt**, and **task prompt** to one of eight LLM providers. Usable as a script, module, installed CLI, or importable library. All keys and settings come from a JSON config file.
+
+### Package structure
+
+```
+LLM_Client/
+├── __init__.py          # re-exports public API (OpenAIProvider, build_provider, ...)
+├── __main__.py          # enables: python -m LLM_Client
+├── llm_client.py        # core: provider classes, factory, main()
+├── config.template.json
+├── examples/            # PowerShell example scripts, one per provider
+└── unittest/            # unit tests, no real API calls needed
+```
+
+### Three invocation modes
+
+```bash
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider grok  # script
+python -m LLM_Client            --config LLM_Client/config.json --provider grok  # module
+llm-client                      --config LLM_Client/config.json --provider grok  # CLI (after pip install .)
+```
+
+### Installation
+
+```bash
+pip install .           # openai only (covers 6 providers)
+pip install ".[claude]" # + anthropic
+pip install ".[gemini]" # + google-generativeai
+pip install ".[all]"    # all SDKs
+```
 
 ### Supported Providers
 

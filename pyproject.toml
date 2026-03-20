@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "llm-client"
+version = "0.1.0"
+description = "Unified CLI and Python interface for multiple LLM providers"
+requires-python = ">=3.10"
+dependencies = ["openai"]
+
+[project.optional-dependencies]
+# pip install ".[claude]"  — Anthropic Claude
+claude = ["anthropic"]
+# pip install ".[gemini]"  — Google Gemini
+gemini = ["google-generativeai"]
+# pip install ".[all]"     — alle SDKs
+all = ["anthropic", "google-generativeai"]
+
+[project.scripts]
+llm-client = "LLM_Client.llm_client:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["LLM_Client*"]
