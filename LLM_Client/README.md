@@ -115,6 +115,69 @@ set_default_model("deepseek", "deepseek-reasoner",    "LLM_Client/config.json")
 
 ---
 
+## Externe Prompt-Dateien
+
+Prompts können statt in `config.json` in einer separaten JSON-Datei verwaltet werden. Das ermöglicht beliebig viele wiederverwendbare Prompt-Sets ohne Änderungen an der Konfiguration.
+
+### Variante a — einzelnes Prompt-Set
+
+```json
+{
+  "system":  "Du bist ein Experte für Textzusammenfassungen.",
+  "context": "Optionaler Hintergrundtext.",
+  "task":    "Fasse den Kontext in drei Punkten zusammen."
+}
+```
+
+```bash
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --provider claude
+```
+
+### Variante b — mehrere benannte Prompt-Sets
+
+```json
+{
+  "summarize":   {"system": "...", "context": "...", "task": "Fasse zusammen."},
+  "translate":   {"system": "...", "context": "...", "task": "Übersetze ins Englische."},
+  "code_review": {"system": "...", "context": "...", "task": "Prüfe den Code."},
+  "default":     {"system": "...", "context": "...", "task": "Standard-Aufgabe."}
+}
+```
+
+```bash
+# Benanntes Set auswählen
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --prompts-name summarize
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --prompts-name translate
+
+# Ohne --prompts-name: "default"-Set wird verwendet
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+
+# Mit Preset kombinierbar
+llm-client --config config.json --preset coding --prompts-file prompts.json --prompts-name code_review
+```
+
+### Programmatisch
+
+```python
+from LLM_Client import load_prompts_file, build_provider, load_config
+
+# Variante a
+prompts = load_prompts_file("prompts_single.json")
+
+# Variante b
+prompts = load_prompts_file("prompts_named.json", name="summarize")
+prompts = load_prompts_file("prompts_named.json", name="code_review")
+
+config   = load_config("config.json")
+provider = build_provider("openai", config)
+print(provider.send(**prompts))
+```
+
+Beispieldateien: `LLM_Client/examples/prompts_single.json` und `LLM_Client/examples/prompts_named.json`
+
+---
+
 ## Als importierbare Bibliothek
 
 ```python

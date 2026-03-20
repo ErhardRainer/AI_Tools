@@ -215,6 +215,9 @@ If `context` is empty, it is skipped entirely.
 - `set_api_key(provider, api_key, config_path)` — writes `providers.<provider>.api_key` into config.json; preserves all other fields
 - `set_default_model(provider, model, config_path)` — writes `providers.<provider>.model` into config.json; preserves all other fields
 - `_write_config(config_path, data)` — internal helper; writes dict as indented JSON
+- `load_prompts_file(path, name?)` — loads a `{system, context, task}` dict from an external JSON file; supports two formats:
+  - **Variante a** (single set): `{"system": ..., "context": ..., "task": ...}`
+  - **Variante b** (named sets): `{"summarize": {"system": ..., ...}, "translate": {...}}` — select via `name`; falls back to `"default"` or the only entry if `name` omitted
 - `PRESET_REGISTRY` — module-level dict: alias → `{"provider": ..., "model": ...}`
 - `mapping_reload(source)` — loads/reloads preset mapping from a JSON file path or dict; mutates `PRESET_REGISTRY` in-place so all references stay valid
 - `resolve_preset(name)` — returns `(provider, model)` tuple for an alias; raises `KeyError` if unknown

@@ -1,0 +1,5 @@
+{
+  "system":  "Du bist ein hilfreicher Assistent, der präzise und strukturierte Antworten gibt.",
+  "context": "Hier steht optionaler Hintergrundtext, z.B. ein Dokument oder eine Beschreibung.",
+  "task":    "Beantworte die folgende Frage auf Basis des Kontexts: Was ist die Kernaussage?"
+}

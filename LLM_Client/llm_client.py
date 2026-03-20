@@ -359,6 +359,106 @@ def set_default_model(provider: str, model: str, config_path: str) -> None:
     _write_config(config_path, config)
 
 
+def load_prompts_file(prompts_path: str, name: str | None = None) -> dict:
+    """
+    Lädt System-, Kontext- und Aufgaben-Prompt aus einer externen JSON-Datei.
+
+    Unterstützt zwei Formate:
+
+    **Variante a — einzelnes Prompt-Set** (direkt verwendbar):
+
+    .. code-block:: json
+
+        {
+          "system":  "Du bist ein hilfreicher Assistent.",
+          "context": "Optionaler Hintergrundtext.",
+          "task":    "Fasse den Kontext zusammen."
+        }
+
+    **Variante b — mehrere benannte Prompt-Sets** (Auswahl per ``name``):
+
+    .. code-block:: json
+
+        {
+          "summarize": {
+            "system":  "Du bist ein Zusammenfassungs-Assistent.",
+            "context": "",
+            "task":    "Fasse den Text in drei Stichpunkten zusammen."
+          },
+          "translate": {
+            "system":  "Du bist ein Übersetzer.",
+            "context": "",
+            "task":    "Übersetze den folgenden Text ins Englische."
+          }
+        }
+
+    Args:
+        prompts_path: Pfad zur JSON-Datei.
+        name:         Optionaler Name des Prompt-Sets (nur für Variante b).
+                      Bei Variante a wird ``name`` ignoriert.
+                      Fehlt ``name`` bei Variante b, wird ``"default"`` verwendet.
+
+    Returns:
+        Dict mit den Schlüsseln ``system``, ``context``, ``task``.
+        Fehlende Schlüssel werden mit leerem String aufgefüllt.
+
+    Raises:
+        FileNotFoundError: Wenn ``prompts_path`` nicht existiert.
+        KeyError:          Wenn ``name`` in Variante b nicht gefunden wird.
+        ValueError:        Wenn das Format nicht erkennbar ist.
+
+    Examples:
+        # Variante a — einzelnes Set
+        prompts = load_prompts_file("prompts.json")
+
+        # Variante b — benanntes Set
+        prompts = load_prompts_file("prompts.json", name="summarize")
+        prompts = load_prompts_file("prompts.json", name="translate")
+    """
+    data = load_config(prompts_path)
+
+    if not isinstance(data, dict):
+        raise ValueError(f"'{prompts_path}' enthält kein JSON-Objekt.")
+
+    # Variante a erkennen: mindestens einer der Prompt-Schlüssel vorhanden
+    prompt_keys = {"system", "context", "task"}
+    if prompt_keys & data.keys():
+        # Einzelnes Prompt-Set — name wird ignoriert
+        return {
+            "system":  data.get("system",  ""),
+            "context": data.get("context", ""),
+            "task":    data.get("task",    ""),
+        }
+
+    # Variante b: jeder Wert muss ein Dict sein
+    for key, val in data.items():
+        if not isinstance(val, dict):
+            raise ValueError(
+                f"'{prompts_path}' hat weder das Format eines einzelnen Prompt-Sets "
+                f"(Schlüssel: system/context/task) noch einer benannten Sammlung "
+                f"(jeder Wert muss ein Dict sein). Gefunden bei Schlüssel '{key}': {val!r}"
+            )
+
+    # Namen auflösen: explizit > "default" > einziger Eintrag
+    resolved_name = name or "default"
+    if resolved_name not in data:
+        if not name and len(data) == 1:
+            resolved_name = next(iter(data))
+        else:
+            available = list(data.keys())
+            raise KeyError(
+                f"Prompt-Set '{resolved_name}' nicht in '{prompts_path}' gefunden. "
+                f"Verfügbar: {available}"
+            )
+
+    entry = data[resolved_name]
+    return {
+        "system":  entry.get("system",  ""),
+        "context": entry.get("context", ""),
+        "task":    entry.get("task",    ""),
+    }
+
+
 def _write_config(config_path: str, data: dict) -> None:
     """Schreibt *data* als formatiertes JSON nach *config_path*."""
     path = Path(config_path)
@@ -419,6 +519,14 @@ def main():
     parser.add_argument("--provider", default=None,  choices=provider_choices,
                         help="Provider override (overrides --preset):\n  " + "\n  ".join(provider_choices))
     parser.add_argument("--model",    default=None,  help="Model override (overrides --preset, optional)")
+    parser.add_argument("--prompts-file", default=None, metavar="PATH",
+                        help=(
+                            "Externe JSON-Datei mit Prompts (überschreibt 'prompts' in config.json).\n"
+                            "Variante a — einzelnes Set:  {\"system\":..., \"context\":..., \"task\":...}\n"
+                            "Variante b — benannte Sets:  {\"name\": {\"system\":..., ...}, ...}"
+                        ))
+    parser.add_argument("--prompts-name", default=None, metavar="NAME",
+                        help="Name des Prompt-Sets (nur für Variante b, Standard: 'default')")
     parser.add_argument("--set-api-key",      nargs=2, metavar=("PROVIDER", "KEY"),
                         help="API-Key in config.json schreiben und beenden.\n"
                              "Beispiel: --set-api-key openai sk-...")
@@ -461,7 +569,10 @@ def main():
 
     provider_name = provider_name or config.get("default_provider", "openai")
 
-    prompts = config.get("prompts", {})
+    if args.prompts_file:
+        prompts = load_prompts_file(args.prompts_file, name=args.prompts_name)
+    else:
+        prompts = config.get("prompts", {})
     system  = prompts.get("system",  "Du bist ein hilfreicher Assistent.")
     context = prompts.get("context", "")
     task    = prompts.get("task",    "")
@@ -473,7 +584,10 @@ def main():
     provider = build_provider(provider_name, config, model_override=model_override)
 
     preset_info = f" (preset: {args.preset})" if args.preset else ""
+    prompts_info = f" (file: {args.prompts_file}" + (f", name: {args.prompts_name}" if args.prompts_name else "") + ")" if args.prompts_file else ""
     print(f"Provider : {provider_name}{preset_info}")
+    if prompts_info:
+        print(f"Prompts  :{prompts_info}")
     print(f"Model    : {provider.model}")
     print(f"System   : {system[:80]}{'...' if len(system) > 80 else ''}")
     print(f"Context  : {context[:80]}{'...' if len(context) > 80 else ''}" if context else "Context  : (none)")
