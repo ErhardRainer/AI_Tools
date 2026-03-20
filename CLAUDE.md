@@ -15,11 +15,21 @@ OpenAI/
 ├── README.md                          # Brief German description
 ├── CLAUDE.md                          # This file
 ├── .gitignore                         # Excludes real config.json and secrets
+├── pyproject.toml                     # Package build config (pip install .)
 ├── Assistant_AI/
 │   └── Assistant_AI.ipynb             # Assistants API notebook (47 cells)
-└── LLM_Client/
-    ├── llm_client.py                  # Multi-provider LLM client script
-    └── config.template.json           # Config template (copy → config.json)
+├── LLM_Client/
+│   ├── llm_client.py                  # Multi-provider LLM client script
+│   └── config.template.json           # Config template (copy → config.json)
+└── llm-api/
+    ├── api.py                         # FastAPI-Wrapper für LLM_Client
+    ├── Dockerfile                     # Container-Build (Kontext: Repo-Root)
+    ├── docker-compose.yml             # Stack mit config.json-Volume
+    ├── requirements.txt               # fastapi, uvicorn
+    ├── examples/
+    │   └── requests.ps1               # PowerShell curl-Beispiele
+    └── tests/
+        └── test_api.py                # Unit-Tests (TestClient, kein echter API-Call)
 ```
 
 ---
@@ -263,6 +273,7 @@ jupyter lab
 Jede `README.md` im Repository muss aktuell gehalten werden. Bei jeder Änderung an Code, Konfiguration, Schnittstellen oder Verzeichnisstruktur ist die zugehörige `README.md` im selben Verzeichnis **im gleichen Commit** zu aktualisieren. Das gilt für alle Ebenen:
 - `/README.md` — bei strukturellen Änderungen am Repository
 - `LLM_Client/README.md` — bei Änderungen an `llm_client.py` oder `config.template.json`
+- `llm-api/README.md` — bei Änderungen an `llm-api/api.py`, `Dockerfile` oder `docker-compose.yml`
 
 ### Pflichtbestandteile jeder Erweiterung
 
@@ -288,6 +299,54 @@ Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selb
 - [ ] PowerShell-Wrapper angelegt unter `LLM_Client/examples/run_<feature>.ps1`
 - [ ] `README.md` und `CLAUDE.md` aktualisiert
 - [ ] Kein Secret / API-Key im Code oder in Templates hardcodiert
+
+---
+
+## LLM API — FastAPI-Wrapper
+
+`llm-api/` stellt alle LLM_Client-Provider als REST-API bereit, deploybar als Docker-Container.
+
+### Endpunkte
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| `GET` | `/health` | Liveness-Check |
+| `GET` | `/providers` | Registrierte Provider + Presets |
+| `POST` | `/chat` | Prompt senden, Antwort empfangen |
+| `GET` | `/docs` | Swagger-UI (automatisch generiert) |
+
+### Starten
+
+```bash
+# Lokal
+pip install ".[all]" fastapi uvicorn
+cd llm-api && uvicorn api:app --reload
+
+# Docker Compose (empfohlen)
+docker compose -f llm-api/docker-compose.yml up --build
+```
+
+### Konfiguration
+
+| Env-Variable | Standard | Beschreibung |
+|---|---|---|
+| `LLM_CONFIG` | `../LLM_Client/config.json` | Pfad zur config.json |
+| `API_KEY` | (leer) | HTTP-Auth-Key; leer = keine Authentifizierung |
+
+### Architektur `llm-api/api.py`
+
+- `ChatRequest` / `ChatResponse` — Pydantic-Modelle
+- `_verify_api_key()` — optionale HTTP-Auth via `X-API-Key`-Header
+- `GET /health` — immer offen, kein Auth
+- `GET /providers` — listet `PROVIDERS` und `PRESET_REGISTRY`
+- `POST /chat` — löst Provider/Preset auf → `build_provider()` → `provider.send()` → optional `extract_json()`
+
+### Tests
+
+```bash
+pip install httpx
+python -m pytest llm-api/tests/ -v
+```
 
 ---
 
