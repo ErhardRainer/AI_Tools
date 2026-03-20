@@ -1,0 +1,24 @@
+{
+  "default_provider": "openai",
+
+  "providers": {
+    "openai": {
+      "api_key": "sk-...",
+      "model": "gpt-4o"
+    },
+    "claude": {
+      "api_key": "sk-ant-...",
+      "model": "claude-sonnet-4-6"
+    },
+    "gemini": {
+      "api_key": "AIza...",
+      "model": "gemini-2.0-flash"
+    }
+  },
+
+  "prompts": {
+    "system":  "Du bist ein hilfreicher Assistent, der präzise und strukturierte Antworten gibt.",
+    "context": "Hier steht optionaler Kontext, z.B. ein Dokument oder Hintergrundinformationen.",
+    "task":    "Fasse den obigen Kontext in drei Stichpunkten zusammen."
+  }
+}

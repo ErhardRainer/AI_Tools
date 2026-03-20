@@ -14,8 +14,12 @@ This repository (`OpenAI`) contains Python-based tools for working with the Open
 OpenAI/
 ├── README.md                          # Brief German description
 ├── CLAUDE.md                          # This file
-└── Assistant_AI/
-    └── Assistant_AI.ipynb             # Main Jupyter notebook (47 cells)
+├── .gitignore                         # Excludes real config.json and secrets
+├── Assistant_AI/
+│   └── Assistant_AI.ipynb             # Assistants API notebook (47 cells)
+└── LLM_Client/
+    ├── llm_client.py                  # Multi-provider LLM client script
+    └── config.template.json           # Config template (copy → config.json)
 ```
 
 ---
@@ -95,6 +99,82 @@ The run polling pattern waits until `run.status` is `"completed"` or `"failed"`.
 - Uses the **beta Assistants API** (`client.beta.assistants`, `client.beta.threads`)
 - Default model: `gpt-4-1106-preview`
 - Tool types used: `retrieval` and `code_interpreter`
+
+---
+
+---
+
+## LLM_Client — Multi-Provider Script
+
+`LLM_Client/llm_client.py` sends a **system prompt**, **context prompt**, and **task prompt** to one of three LLM providers via a unified interface. All keys and settings come from a JSON config file.
+
+### Supported Providers
+
+| Provider | SDK | Install |
+|---|---|---|
+| `openai` | `openai` | `pip install openai` |
+| `claude` | `anthropic` | `pip install anthropic` |
+| `gemini` | `google-generativeai` | `pip install google-generativeai` |
+
+### Setup
+
+```bash
+cp LLM_Client/config.template.json LLM_Client/config.json
+# Edit config.json and fill in your API keys
+```
+
+`config.json` is excluded from git via `.gitignore`.
+
+### Config file structure
+
+```json
+{
+  "default_provider": "openai",
+  "providers": {
+    "openai":  { "api_key": "sk-...",     "model": "gpt-4o" },
+    "claude":  { "api_key": "sk-ant-...", "model": "claude-sonnet-4-6" },
+    "gemini":  { "api_key": "AIza...",    "model": "gemini-2.0-flash" }
+  },
+  "prompts": {
+    "system":  "You are a helpful assistant.",
+    "context": "Optional background information or document content.",
+    "task":    "Summarize the context in three bullet points."
+  }
+}
+```
+
+### Running
+
+```bash
+# Use the default_provider from config
+python LLM_Client/llm_client.py --config LLM_Client/config.json
+
+# Override provider at runtime
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider claude
+
+# Override provider and model
+python LLM_Client/llm_client.py --config LLM_Client/config.json --provider gemini --model gemini-2.0-pro
+```
+
+### Prompt flow
+
+The three prompts are mapped to API roles as follows:
+
+| Prompt | OpenAI role | Claude param | Gemini |
+|---|---|---|---|
+| `system` | `system` message | `system=` parameter | `system_instruction=` |
+| `context` | `user` turn (followed by a brief assistant ack) | same | prepended to user content |
+| `task` | final `user` turn | final `user` turn | appended to user content |
+
+If `context` is empty, it is skipped entirely.
+
+### Architecture
+
+- `load_config(path)` — reads JSON config
+- `get_nested(data, "a.b.c")` — dot-path accessor
+- `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider` — each has a `.send(system, context, task) → str` method
+- `build_provider(name, config, model_override)` — factory that instantiates the right class
+- `main()` — CLI entry point with `argparse`
 
 ---
 
