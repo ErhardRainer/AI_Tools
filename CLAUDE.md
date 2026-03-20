@@ -212,6 +212,9 @@ If `context` is empty, it is skipped entirely.
 
 - `load_config(path)` — reads JSON config
 - `get_nested(data, "a.b.c")` — dot-path accessor
+- `set_api_key(provider, api_key, config_path)` — writes `providers.<provider>.api_key` into config.json; preserves all other fields
+- `set_default_model(provider, model, config_path)` — writes `providers.<provider>.model` into config.json; preserves all other fields
+- `_write_config(config_path, data)` — internal helper; writes dict as indented JSON
 - `PRESET_REGISTRY` — module-level dict: alias → `{"provider": ..., "model": ...}`
 - `mapping_reload(source)` — loads/reloads preset mapping from a JSON file path or dict; mutates `PRESET_REGISTRY` in-place so all references stay valid
 - `resolve_preset(name)` — returns `(provider, model)` tuple for an alias; raises `KeyError` if unknown

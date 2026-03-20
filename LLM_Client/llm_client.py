@@ -294,6 +294,80 @@ class MistralProvider(_OpenAICompatibleProvider):
 
 
 # ---------------------------------------------------------------------------
+# Config writer
+# ---------------------------------------------------------------------------
+
+def set_api_key(provider: str, api_key: str, config_path: str) -> None:
+    """
+    Schreibt den API-Key eines Providers in die config.json.
+
+    Legt den Pfad ``providers.<provider>.api_key`` an, falls er noch nicht
+    existiert. Alle anderen Felder der Datei bleiben unverändert.
+
+    Args:
+        provider:    Provider-Name (z. B. ``"openai"``, ``"claude"``).
+        api_key:     Der API-Key-String.
+        config_path: Pfad zur config.json (wird überschrieben).
+
+    Raises:
+        FileNotFoundError: Wenn ``config_path`` nicht existiert.
+        ValueError:        Wenn ``provider`` oder ``api_key`` leer sind.
+
+    Example:
+        set_api_key("openai", "sk-...", "LLM_Client/config.json")
+        set_api_key("claude", "sk-ant-...", "LLM_Client/config.json")
+    """
+    if not provider:
+        raise ValueError("provider darf nicht leer sein.")
+    if not api_key:
+        raise ValueError("api_key darf nicht leer sein.")
+
+    config = load_config(config_path)
+    config.setdefault("providers", {}).setdefault(provider, {})["api_key"] = api_key
+
+    _write_config(config_path, config)
+
+
+def set_default_model(provider: str, model: str, config_path: str) -> None:
+    """
+    Setzt das Standard-Modell eines Providers in der config.json.
+
+    Legt den Pfad ``providers.<provider>.model`` an, falls er noch nicht
+    existiert. Alle anderen Felder der Datei bleiben unverändert.
+
+    Args:
+        provider:    Provider-Name (z. B. ``"openai"``, ``"deepseek"``).
+        model:       Modell-Bezeichnung (z. B. ``"gpt-4o"``, ``"deepseek-reasoner"``).
+        config_path: Pfad zur config.json (wird überschrieben).
+
+    Raises:
+        FileNotFoundError: Wenn ``config_path`` nicht existiert.
+        ValueError:        Wenn ``provider`` oder ``model`` leer sind.
+
+    Example:
+        set_default_model("openai",    "gpt-4o",             "LLM_Client/config.json")
+        set_default_model("deepseek",  "deepseek-reasoner",  "LLM_Client/config.json")
+    """
+    if not provider:
+        raise ValueError("provider darf nicht leer sein.")
+    if not model:
+        raise ValueError("model darf nicht leer sein.")
+
+    config = load_config(config_path)
+    config.setdefault("providers", {}).setdefault(provider, {})["model"] = model
+
+    _write_config(config_path, config)
+
+
+def _write_config(config_path: str, data: dict) -> None:
+    """Schreibt *data* als formatiertes JSON nach *config_path*."""
+    path = Path(config_path)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -345,7 +419,27 @@ def main():
     parser.add_argument("--provider", default=None,  choices=provider_choices,
                         help="Provider override (overrides --preset):\n  " + "\n  ".join(provider_choices))
     parser.add_argument("--model",    default=None,  help="Model override (overrides --preset, optional)")
+    parser.add_argument("--set-api-key",      nargs=2, metavar=("PROVIDER", "KEY"),
+                        help="API-Key in config.json schreiben und beenden.\n"
+                             "Beispiel: --set-api-key openai sk-...")
+    parser.add_argument("--set-default-model", nargs=2, metavar=("PROVIDER", "MODEL"),
+                        help="Standard-Modell in config.json schreiben und beenden.\n"
+                             "Beispiel: --set-default-model openai gpt-4o")
     args = parser.parse_args()
+
+    # --- Write-Modus: config.json aktualisieren und sofort beenden -----------
+    if args.set_api_key:
+        provider_w, key_w = args.set_api_key
+        set_api_key(provider_w, key_w, args.config)
+        print(f"API-Key für '{provider_w}' wurde in '{args.config}' gespeichert.")
+        sys.exit(0)
+
+    if args.set_default_model:
+        provider_w, model_w = args.set_default_model
+        set_default_model(provider_w, model_w, args.config)
+        print(f"Standard-Modell für '{provider_w}' auf '{model_w}' gesetzt in '{args.config}'.")
+        sys.exit(0)
+    # -------------------------------------------------------------------------
 
     config = load_config(args.config)
 

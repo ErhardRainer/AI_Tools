@@ -14,6 +14,8 @@ Nach Installation (pip install .):
 from .llm_client import (
     load_config,
     get_nested,
+    set_api_key,
+    set_default_model,
     PRESET_REGISTRY,
     mapping_reload,
     resolve_preset,
@@ -32,6 +34,8 @@ from .llm_client import (
 __all__ = [
     "load_config",
     "get_nested",
+    "set_api_key",
+    "set_default_model",
     "PRESET_REGISTRY",
     "mapping_reload",
     "resolve_preset",

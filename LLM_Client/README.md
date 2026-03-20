@@ -86,6 +86,35 @@ print(provider.send("System", "", "Schreibe eine Funktion in Python."))
 mapping_reload("config.json")
 ```
 
+## API-Keys und Standard-Modelle setzen
+
+API-Keys und Standard-Modelle können direkt per CLI oder per Python-Funktion in die `config.json` geschrieben werden — ohne sie manuell im Editor zu öffnen.
+
+```bash
+# API-Key für einen Provider setzen
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key openai   "sk-..."
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key claude   "sk-ant-..."
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key deepseek "sk-..."
+
+# Standard-Modell für einen Provider setzen
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-default-model openai   "gpt-4o-mini"
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-default-model deepseek "deepseek-reasoner"
+```
+
+Alle anderen Felder der Datei (andere Provider, Presets, Prompts) bleiben unverändert. Existiert der Provider-Eintrag noch nicht, wird er angelegt.
+
+```python
+from LLM_Client import set_api_key, set_default_model
+
+set_api_key("openai",   "sk-...",            "LLM_Client/config.json")
+set_api_key("claude",   "sk-ant-...",        "LLM_Client/config.json")
+
+set_default_model("openai",   "gpt-4o-mini",         "LLM_Client/config.json")
+set_default_model("deepseek", "deepseek-reasoner",    "LLM_Client/config.json")
+```
+
+---
+
 ## Als importierbare Bibliothek
 
 ```python
