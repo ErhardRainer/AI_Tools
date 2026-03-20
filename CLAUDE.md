@@ -205,6 +205,11 @@ jupyter lab
 - `master` / `main` — stable branch
 - `claude/...` — AI-generated feature/documentation branches
 
+### README-Pflege
+Jede `README.md` im Repository muss aktuell gehalten werden. Bei jeder Änderung an Code, Konfiguration, Schnittstellen oder Verzeichnisstruktur ist die zugehörige `README.md` im selben Verzeichnis **im gleichen Commit** zu aktualisieren. Das gilt für alle Ebenen:
+- `/README.md` — bei strukturellen Änderungen am Repository
+- `LLM_Client/README.md` — bei Änderungen an `llm_client.py` oder `config.template.json`
+
 ---
 
 ## Things to Watch Out For
