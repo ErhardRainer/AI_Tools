@@ -269,6 +269,41 @@ PROVIDERS["meinprovider"] = MeinProviderProvider
 
 ---
 
+## Tests ausführen
+
+Die Tests liegen in `unittest/` und benötigen keine echten API-Keys (alle SDKs werden gemockt).
+
+```bash
+# Alle Tests (kurz)
+python LLM_Client/unittest/run_all_tests.py
+
+# Alle Tests (ausführlich)
+python LLM_Client/unittest/run_all_tests.py -v
+
+# Einzelnen Provider testen
+python -m pytest LLM_Client/unittest/test_grok.py -v
+
+# Über standard unittest discovery
+python -m unittest discover -s LLM_Client/unittest -p "test_*.py" -v
+```
+
+### Test-Dateien
+
+| Datei | Beschreibung |
+|---|---|
+| `test_openai.py` | OpenAIProvider — 6 Tests |
+| `test_claude.py` | ClaudeProvider — 7 Tests (inkl. system= Parameter) |
+| `test_gemini.py` | GeminiProvider — 6 Tests (inkl. context+task-Verkettung) |
+| `test_grok.py` | GrokProvider — 6 Tests (inkl. base_url-Prüfung) |
+| `test_kimi.py` | KimiProvider — 7 Tests (inkl. Moonshot-Modelle) |
+| `test_deepseek.py` | DeepSeekProvider — 7 Tests (inkl. deepseek-reasoner) |
+| `test_groq.py` | GroqProvider — 7 Tests (inkl. verschiedene Modelle) |
+| `test_mistral.py` | MistralProvider — 7 Tests (inkl. codestral) |
+| `test_utils.py` | load_config, get_nested, build_provider — 13 Tests |
+| `run_all_tests.py` | Runner-Skript für alle Tests zusammen |
+
+---
+
 ## Dateien
 
 | Datei | Beschreibung |
@@ -276,6 +311,7 @@ PROVIDERS["meinprovider"] = MeinProviderProvider
 | `llm_client.py` | Hauptscript |
 | `config.template.json` | Konfigurationsvorlage — in `config.json` kopieren und befüllen |
 | `config.json` | Echte Konfiguration mit API-Keys (nicht im Repository, via `.gitignore` ausgeschlossen) |
+| `unittest/` | Unit-Tests für alle Provider (keine echten API-Calls erforderlich) |
 
 ---
 
