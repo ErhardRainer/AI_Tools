@@ -14,6 +14,9 @@ Nach Installation (pip install .):
 from .llm_client import (
     load_config,
     get_nested,
+    PRESET_REGISTRY,
+    mapping_reload,
+    resolve_preset,
     OpenAIProvider,
     ClaudeProvider,
     GeminiProvider,
@@ -29,6 +32,9 @@ from .llm_client import (
 __all__ = [
     "load_config",
     "get_nested",
+    "PRESET_REGISTRY",
+    "mapping_reload",
+    "resolve_preset",
     "OpenAIProvider",
     "ClaudeProvider",
     "GeminiProvider",

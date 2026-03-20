@@ -212,12 +212,15 @@ If `context` is empty, it is skipped entirely.
 
 - `load_config(path)` — reads JSON config
 - `get_nested(data, "a.b.c")` — dot-path accessor
+- `PRESET_REGISTRY` — module-level dict: alias → `{"provider": ..., "model": ...}`
+- `mapping_reload(source)` — loads/reloads preset mapping from a JSON file path or dict; mutates `PRESET_REGISTRY` in-place so all references stay valid
+- `resolve_preset(name)` — returns `(provider, model)` tuple for an alias; raises `KeyError` if unknown
 - `OpenAIProvider`, `ClaudeProvider`, `GeminiProvider` — native SDKs, each with `.send(system, context, task) → str`
 - `_OpenAICompatibleProvider` — base class for OpenAI-compatible APIs; subclasses set `BASE_URL` + `DEFAULT_MODEL`
   - `GrokProvider` (api.x.ai/v1), `KimiProvider` (api.moonshot.cn/v1), `DeepSeekProvider` (api.deepseek.com), `GroqProvider` (api.groq.com/openai/v1), `MistralProvider` (api.mistral.ai/v1)
 - `PROVIDERS` dict — registry mapping provider name → class
 - `build_provider(name, config, model_override)` — factory that instantiates the right class
-- `main()` — CLI entry point with `argparse`
+- `main()` — CLI entry point with `argparse`; supports `--preset` (auto-loads from config, overridable by `--provider`/`--model`)
 
 ---
 

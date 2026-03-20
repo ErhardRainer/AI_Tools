@@ -45,6 +45,19 @@
 
   },
 
+  "presets": {
+
+    "coding":    {"provider": "claude",   "model": "claude-opus-4-6"},
+    "balanced":  {"provider": "openai",   "model": "gpt-4o"},
+    "fast":      {"provider": "groq",     "model": "llama-3.1-8b-instant"},
+    "cheap":     {"provider": "deepseek", "model": "deepseek-chat"},
+    "reasoning": {"provider": "deepseek", "model": "deepseek-reasoner"},
+    "longctx":   {"provider": "kimi",     "model": "moonshot-v1-128k"},
+    "creative":  {"provider": "gemini",   "model": "gemini-2.0-flash"},
+    "code":      {"provider": "mistral",  "model": "codestral-latest"}
+
+  },
+
   "prompts": {
     "system":  "Du bist ein hilfreicher Assistent, der präzise und strukturierte Antworten gibt.",
     "context": "Hier steht optionaler Kontext, z.B. ein Dokument oder Hintergrundinformationen.",

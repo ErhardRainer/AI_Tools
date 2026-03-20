@@ -14,11 +14,20 @@ Supported providers:
     groq      — Groq inference (llama-3.3-70b-versatile, gemma2-9b-it, ...)
     mistral   — Mistral AI (mistral-large-latest, mistral-small-latest, ...)
 
+Preset aliases (defined in config.json under "presets"):
+    --preset coding     → claude + claude-opus-4-6
+    --preset fast       → groq  + llama-3.1-8b-instant
+    --preset cheap      → deepseek + deepseek-chat
+    --preset reasoning  → deepseek + deepseek-reasoner
+
 Usage:
     python llm_client.py --config config.json
     python llm_client.py --config config.json --provider grok
     python llm_client.py --config config.json --provider kimi --model kimi-k2
-    python llm_client.py --config config.json --provider deepseek --model deepseek-reasoner
+    python llm_client.py --config config.json --preset coding
+    python llm_client.py --config config.json --preset fast
+    python -m LLM_Client --config config.json --preset reasoning
+    llm-client           --config config.json --preset cheap   (after: pip install .)
 
 Config file format: see config.template.json
 """
@@ -49,6 +58,86 @@ def get_nested(data: dict, key_path: str, default=None):
             return default
         data = data.get(key, default)
     return data
+
+
+# ---------------------------------------------------------------------------
+# Preset / Alias registry
+# ---------------------------------------------------------------------------
+
+# Module-level registry: maps alias name → {"provider": ..., "model": ...}
+PRESET_REGISTRY: dict[str, dict] = {}
+
+
+def mapping_reload(source: str | dict) -> dict:
+    """
+    Load (or reload) the preset mapping from a JSON file or a config dict.
+
+    The source can be:
+    - A file path (str) pointing to a JSON file that contains a "presets" key
+      OR is itself a flat presets mapping.
+    - A dict (e.g. the already-loaded config) that contains a "presets" key
+      OR is itself a flat presets mapping.
+
+    Each preset entry must have the form:
+        "<alias>": {"provider": "<provider-name>", "model": "<model-name>"}
+
+    Returns the loaded presets dict (also updates the global PRESET_REGISTRY).
+
+    Example (in config.json):
+        {
+          "presets": {
+            "coding":    {"provider": "claude",   "model": "claude-opus-4-6"},
+            "fast":      {"provider": "groq",     "model": "llama-3.1-8b-instant"},
+            "cheap":     {"provider": "deepseek", "model": "deepseek-chat"}
+          }
+        }
+
+    Programmatic usage:
+        from LLM_Client import mapping_reload, resolve_preset
+        mapping_reload("config.json")
+        provider, model = resolve_preset("coding")
+    """
+    if isinstance(source, str):
+        data = load_config(source)
+    else:
+        data = source
+
+    # Accept {"presets": {...}} or the flat dict {"coding": {...}, ...} directly
+    new_presets = data.get("presets", data) if isinstance(data, dict) else {}
+
+    # Validate each entry has at minimum a "provider" key
+    for alias, entry in new_presets.items():
+        if not isinstance(entry, dict) or "provider" not in entry:
+            raise ValueError(
+                f"Preset '{alias}' is invalid. "
+                f"Expected {{\"provider\": \"...\", \"model\": \"...\"}}, got: {entry}"
+            )
+
+    # Mutate the existing dict object (clear + update) so that all references
+    # to PRESET_REGISTRY (e.g. from `from LLM_Client import PRESET_REGISTRY`)
+    # see the updated values without re-importing.
+    PRESET_REGISTRY.clear()
+    PRESET_REGISTRY.update(new_presets)
+    return PRESET_REGISTRY
+
+
+def resolve_preset(name: str) -> tuple[str, str]:
+    """
+    Resolve a preset alias to a (provider, model) tuple.
+
+    Raises KeyError if the alias is not in PRESET_REGISTRY.
+    Call mapping_reload() first to populate the registry.
+
+    Example:
+        mapping_reload("config.json")
+        provider, model = resolve_preset("coding")
+        # → ("claude", "claude-opus-4-6")
+    """
+    if name not in PRESET_REGISTRY:
+        available = list(PRESET_REGISTRY.keys()) or ["(registry is empty — call mapping_reload first)"]
+        raise KeyError(f"Unknown preset '{name}'. Available: {available}")
+    entry = PRESET_REGISTRY[name]
+    return entry["provider"], entry.get("model", "")
 
 
 # ---------------------------------------------------------------------------
@@ -248,16 +337,35 @@ def main():
         description="Send system/context/task prompts to an LLM provider.",
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    parser.add_argument("--config",   required=True,  help="Path to JSON config file")
-    parser.add_argument("--provider", default=None,   choices=provider_choices,
-                        help="Provider override:\n  " + "\n  ".join(provider_choices))
-    parser.add_argument("--model",    default=None,   help="Model override (optional)")
+    parser.add_argument("--config",   required=True, help="Path to JSON config file")
+    parser.add_argument("--preset",   default=None,  help=(
+        "Preset alias defined in config.json under 'presets'.\n"
+        "Sets provider + model in one step. Overridden by explicit --provider/--model."
+    ))
+    parser.add_argument("--provider", default=None,  choices=provider_choices,
+                        help="Provider override (overrides --preset):\n  " + "\n  ".join(provider_choices))
+    parser.add_argument("--model",    default=None,  help="Model override (overrides --preset, optional)")
     args = parser.parse_args()
 
     config = load_config(args.config)
 
-    # Resolve provider: CLI flag → config default_provider → openai
-    provider_name = args.provider or config.get("default_provider", "openai")
+    # Auto-load presets from config if present
+    if config.get("presets"):
+        mapping_reload(config)
+
+    # Resolve provider + model:
+    # Priority: --provider/--model (explicit) > --preset > config default_provider
+    provider_name = args.provider
+    model_override = args.model
+
+    if args.preset and not (args.provider and args.model):
+        preset_provider, preset_model = resolve_preset(args.preset)
+        if not provider_name:
+            provider_name = preset_provider
+        if not model_override:
+            model_override = preset_model or None
+
+    provider_name = provider_name or config.get("default_provider", "openai")
 
     prompts = config.get("prompts", {})
     system  = prompts.get("system",  "Du bist ein hilfreicher Assistent.")
@@ -268,9 +376,10 @@ def main():
         print("ERROR: 'prompts.task' is empty in the config file.", file=sys.stderr)
         sys.exit(1)
 
-    provider = build_provider(provider_name, config, model_override=args.model)
+    provider = build_provider(provider_name, config, model_override=model_override)
 
-    print(f"Provider : {provider_name}")
+    preset_info = f" (preset: {args.preset})" if args.preset else ""
+    print(f"Provider : {provider_name}{preset_info}")
     print(f"Model    : {provider.model}")
     print(f"System   : {system[:80]}{'...' if len(system) > 80 else ''}")
     print(f"Context  : {context[:80]}{'...' if len(context) > 80 else ''}" if context else "Context  : (none)")

@@ -15,6 +15,75 @@ python -m LLM_Client --config LLM_Client/config.json --provider grok
 
 # 3. Als installiertes CLI (nach: pip install .)
 llm-client --config LLM_Client/config.json --provider grok
+
+# Mit Preset-Alias statt Provider + Modell:
+python LLM_Client/llm_client.py --config LLM_Client/config.json --preset coding
+llm-client                      --config LLM_Client/config.json --preset fast
+```
+
+---
+
+## Preset-Aliases
+
+Statt Provider und Modellnamen auswendig zu kennen, kann man **sprechende Kurznamen** verwenden. Die Mapping-Tabelle wird in `config.json` unter `"presets"` definiert und ist vollständig konfigurierbar.
+
+### Standard-Presets (aus `config.template.json`)
+
+| Alias | Provider | Modell | Einsatz |
+|---|---|---|---|
+| `coding` | claude | claude-opus-4-6 | Beste Code-Qualität |
+| `balanced` | openai | gpt-4o | Allgemein ausgewogen |
+| `fast` | groq | llama-3.1-8b-instant | Maximale Geschwindigkeit |
+| `cheap` | deepseek | deepseek-chat | Günstigste Option |
+| `reasoning` | deepseek | deepseek-reasoner | Chain-of-Thought / R1 |
+| `longctx` | kimi | moonshot-v1-128k | Sehr langer Kontext |
+| `creative` | gemini | gemini-2.0-flash | Kreative Aufgaben |
+| `code` | mistral | codestral-latest | Code-Spezialist |
+
+### Eigene Presets definieren
+
+In `config.json` einfach neue Einträge unter `"presets"` hinzufügen:
+
+```json
+{
+  "presets": {
+    "coding":   {"provider": "claude",   "model": "claude-opus-4-6"},
+    "fast":     {"provider": "groq",     "model": "llama-3.1-8b-instant"},
+    "myprojekt":{"provider": "openai",   "model": "gpt-4o-mini"}
+  }
+}
+```
+
+### Preset mit Override kombinieren
+
+`--provider` und `--model` überschreiben einzelne Felder des Presets:
+
+```bash
+# Preset "coding" → claude + claude-opus-4-6
+# --model überschreibt nur das Modell → claude + claude-sonnet-4-6
+llm-client --config config.json --preset coding --model claude-sonnet-4-6
+```
+
+### Programmatische Verwendung
+
+```python
+from LLM_Client import mapping_reload, resolve_preset, build_provider, load_config
+
+config = load_config("config.json")
+mapping_reload(config)                        # Lädt Presets aus config.json
+
+provider_name, model = resolve_preset("coding")
+# → ("claude", "claude-opus-4-6")
+
+provider = build_provider(provider_name, config, model_override=model)
+print(provider.send("System", "", "Schreibe eine Funktion in Python."))
+```
+
+### Zur Laufzeit neu laden
+
+```python
+# Presets nach Änderung an config.json neu einlesen — kein Neustart nötig
+mapping_reload("config.json")
 ```
 
 ## Als importierbare Bibliothek

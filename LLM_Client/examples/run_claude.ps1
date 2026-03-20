@@ -17,3 +17,6 @@ python "$PSScriptRoot\..\llm_client.py" --config $Config --provider $Provider --
 
 # Aufruf 3: installiertes CLI (nach: pip install ".[claude]")
 # llm-client --config $Config --provider $Provider --model $Model
+
+# Aufruf 4: über Preset-Alias (definiert in config.json unter "presets")
+# python "$PSScriptRoot\..\llm_client.py" --config $Config --preset coding
