@@ -256,6 +256,31 @@ Jede `README.md` im Repository muss aktuell gehalten werden. Bei jeder Änderung
 - `/README.md` — bei strukturellen Änderungen am Repository
 - `LLM_Client/README.md` — bei Änderungen an `llm_client.py` oder `config.template.json`
 
+### Pflichtbestandteile jeder Erweiterung
+
+Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selben Commit folgende zwei Artefakte enthalten:
+
+#### 1. Unit-Test in `LLM_Client/unittest/test_<feature>.py`
+
+- Keine echten API-Calls — alle externen Abhängigkeiten werden mit `unittest.mock` gemockt
+- Testklassen nach Feature gruppieren (z. B. `TestMappingReloadFromDict`, `TestResolvePreset`)
+- Abdeckung: Happy Path, Fehlerfälle (`ValueError`, `KeyError`, `FileNotFoundError`), Randfälle (leere Eingaben, fehlende optionale Felder)
+- Neue Testdatei im Runner `LLM_Client/unittest/run_all_tests.py` registrieren, damit sie automatisch ausgeführt wird
+- Vor jedem Commit ausführen: `python LLM_Client/unittest/run_all_tests.py` — alle Tests müssen grün sein
+
+#### 2. PowerShell-Wrapper in `LLM_Client/examples/run_<feature>.ps1`
+
+- Zeigt alle sinnvollen Aufrufvarianten des neuen Features (Script, Modul, CLI, ggf. programmatisch)
+- Kommentare auf Deutsch, die erklären was der jeweilige Aufruf macht
+- Nicht verwendete/optionale Varianten als auskommentierte Zeilen (`#`) mit Erklärung
+- Referenziert die Config relativ zum Skript: `$Config = "$PSScriptRoot\..\config.json"`
+
+**Checkliste vor jedem Commit:**
+- [ ] Unit-Tests geschrieben und alle grün (`python LLM_Client/unittest/run_all_tests.py`)
+- [ ] PowerShell-Wrapper angelegt unter `LLM_Client/examples/run_<feature>.ps1`
+- [ ] `README.md` und `CLAUDE.md` aktualisiert
+- [ ] Kein Secret / API-Key im Code oder in Templates hardcodiert
+
 ---
 
 ## Things to Watch Out For
