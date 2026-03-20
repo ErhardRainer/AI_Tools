@@ -10,12 +10,14 @@ requires-python = ">=3.10"
 dependencies = ["openai"]
 
 [project.optional-dependencies]
-# pip install ".[claude]"  — Anthropic Claude
+# pip install ".[claude]"     — Anthropic Claude
 claude = ["anthropic"]
-# pip install ".[gemini]"  — Google Gemini
+# pip install ".[gemini]"     — Google Gemini
 gemini = ["google-generativeai"]
-# pip install ".[all]"     — alle SDKs
-all = ["anthropic", "google-generativeai"]
+# pip install ".[url-fetch]"  — PDF/HTML/TXT aus URLs laden (fetch_context_urls)
+url-fetch = ["requests", "pypdf", "beautifulsoup4"]
+# pip install ".[all]"        — alle SDKs + URL-Fetch
+all = ["anthropic", "google-generativeai", "requests", "pypdf", "beautifulsoup4"]
 
 [project.scripts]
 llm-client = "LLM_Client.llm_client:main"

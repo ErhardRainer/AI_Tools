@@ -227,6 +227,7 @@ If `context` is empty, it is skipped entirely.
 - `_write_config(config_path, data)` — internal helper; writes dict as indented JSON
 - `extract_json(text)` — extracts the first valid JSON block from text; tries markdown code fences first, then raw `{...}`/`[...]`; raises `ValueError` if none found
 - `format_output(response, header_lines, fmt)` — formats output for file writing; `fmt` is `"header"` (full header + response), `"plain"` (response only), or `"json"` (extracted JSON only); raises `ValueError` for unknown format or missing JSON
+- `fetch_context_urls(text)` — detects HTTP(S)-URLs in text via regex and replaces each with the fetched content; supports PDF (via `pypdf`), HTML (via `beautifulsoup4`, with tag-strip fallback), and plain text; unreachable URLs are replaced with an error message; optional deps: `requests`, `pypdf`, `beautifulsoup4` (`pip install ".[url-fetch]"`)
 - `load_prompts_file(path, name?)` — loads a `{system, context, task}` dict from an external JSON file; supports two formats:
   - **Variante a** (single set): `{"system": ..., "context": ..., "task": ...}`
   - **Variante b** (named sets): `{"summarize": {"system": ..., ...}, "translate": {...}}` — select via `name`; falls back to `"default"` or the only entry if `name` omitted

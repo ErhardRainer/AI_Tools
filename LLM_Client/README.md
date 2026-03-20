@@ -200,6 +200,89 @@ print(provider.send("System", "", "Was ist 2+2?"))
 
 ---
 
+## URL-Inhalte automatisch abrufen (PDF, HTML, TXT)
+
+`fetch_context_urls(text)` erkennt HTTP(S)-URLs im `context`-Feld via Regex und ersetzt jede URL durch den tatsächlichen Inhalt des Dokuments — **automatisch**, ohne dass der Aufrufer das Dokument vorab herunterladen muss.
+
+### Unterstützte Formate
+
+| Typ | Erkennung | Extraktion |
+|---|---|---|
+| PDF | `Content-Type: application/pdf` oder `.pdf` | Seitentext via `pypdf` |
+| HTML | `Content-Type: text/html` oder `.html`/`.htm` | Lesbarer Text via `beautifulsoup4` (Fallback: Tag-Stripper) |
+| Text | alles andere | Rohtext direkt |
+
+### Abhängigkeiten
+
+```bash
+pip install ".[url-fetch]"          # requests + pypdf + beautifulsoup4
+# oder einzeln:
+pip install requests pypdf beautifulsoup4
+```
+
+### CLI — URL im Kontext
+
+```json
+// prompts.json
+{
+  "system":  "Du bist ein Experte für Textzusammenfassungen.",
+  "context": "https://example.com/bericht.pdf",
+  "task":    "Fasse den Inhalt in 5 Stichpunkten zusammen."
+}
+```
+
+```bash
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+# → URL wird abgerufen, PDF-Text extrahiert und ans Modell übergeben
+```
+
+### Programmatisch
+
+```python
+from LLM_Client import fetch_context_urls, build_provider, load_config
+
+config   = load_config("LLM_Client/config.json")
+context  = fetch_context_urls("https://example.com/bericht.pdf")
+provider = build_provider("openai", config)
+
+antwort = provider.send(
+    system  = "Du bist ein Experte für Textzusammenfassungen.",
+    context = context,
+    task    = "Fasse den Inhalt in 5 Stichpunkten zusammen.",
+)
+print(antwort)
+```
+
+### Mehrere URLs im Kontext
+
+Alle URLs im Text werden aufgelöst, auch gemischt:
+
+```python
+ctx = """
+Jahresbericht:  https://example.com/report.pdf
+Produktseite:   https://example.com/produkt.html
+Changelog:      https://example.com/changes.txt
+"""
+resolved = fetch_context_urls(ctx)
+# → jede URL wird durch [Inhalt von <url>]\n<Text> ersetzt
+```
+
+### Über die REST-API
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "openai",
+    "system":   "Du bist ein Experte für Textzusammenfassungen.",
+    "context":  "https://example.com/bericht.pdf",
+    "task":     "Fasse den Inhalt in 5 Stichpunkten zusammen."
+  }'
+# Die API löst die URL automatisch auf — kein Client-Code nötig.
+```
+
+---
+
 ## Unterstützte Anbieter
 
 | Anbieter | Klasse | Standard-Modell | API-Konsole |
@@ -226,7 +309,8 @@ Grok, Kimi, DeepSeek, Groq und Mistral implementieren alle die OpenAI-kompatible
 pip install .                  # Basis (openai SDK, deckt 6 Provider ab)
 pip install ".[claude]"        # + anthropic
 pip install ".[gemini]"        # + google-generativeai
-pip install ".[all]"           # alle SDKs
+pip install ".[url-fetch]"     # + requests, pypdf, beautifulsoup4 (URL-Abruf)
+pip install ".[all]"           # alle SDKs + URL-Fetch
 ```
 
 Nach der Installation steht der CLI-Befehl `llm-client` überall zur Verfügung.

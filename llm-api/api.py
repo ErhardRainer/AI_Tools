@@ -29,6 +29,7 @@ from LLM_Client import (
     PROVIDERS,
     build_provider,
     extract_json,
+    fetch_context_urls,
     load_config,
     mapping_reload,
     resolve_preset,
@@ -218,11 +219,14 @@ def chat(
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+    # HTTP(S)-URLs im Kontext automatisch abrufen und durch Inhalt ersetzen
+    resolved_context = fetch_context_urls(req.context)
+
     # API-Call
     try:
         raw_response = provider.send(
             system=req.system,
-            context=req.context,
+            context=resolved_context,
             task=req.task,
         )
     except Exception as exc:

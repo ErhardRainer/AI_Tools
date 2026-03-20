@@ -469,6 +469,100 @@ def _write_config(config_path: str, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# URL-Context-Resolver
+# ---------------------------------------------------------------------------
+
+_URL_PATTERN = re.compile(r"https?://\S+")
+
+
+def fetch_context_urls(text: str) -> str:
+    """
+    Erkennt HTTP(S)-URLs in text (via Regex) und ersetzt jede URL
+    durch den abgerufenen Textinhalt.
+
+    Unterstützte Formate (anhand Content-Type-Header und Dateiendung):
+        PDF  (application/pdf, .pdf)   → Textextraktion via pypdf
+        HTML (text/html, .html/.htm)   → Textextraktion via BeautifulSoup
+        Text (text/plain, JSON, XML …) → direkt verwenden
+
+    Optionale Abhängigkeiten — nur bei Bedarf importiert:
+        pip install requests           # Basis-HTTP-Abruf
+        pip install pypdf              # PDF-Unterstützung
+        pip install beautifulsoup4     # HTML-Bereinigung
+    oder gemeinsam:
+        pip install ".[url-fetch]"
+
+    Kann nicht abgerufene URLs (Netzwerkfehler, fehlende Pakete) werden
+    durch eine lesbare Fehlermeldung ersetzt; der Rest des Textes bleibt
+    unverändert.
+
+    Args:
+        text: Beliebiger Text, der 0–n URLs enthalten kann.
+
+    Returns:
+        text mit ersetzten URL-Inhalten.
+
+    Example:
+        ctx = "Analysiere bitte https://example.com/report.pdf"
+        resolved = fetch_context_urls(ctx)
+        # → "Analysiere bitte [Inhalt von https://example.com/report.pdf]\\n<PDF-Text>"
+    """
+    if not text or not _URL_PATTERN.search(text):
+        return text
+
+    def _fetch(url: str) -> str:
+        try:
+            import requests as _req
+        except ImportError:
+            raise ImportError(
+                "requests-Paket für URL-Abruf erforderlich: pip install requests"
+            )
+        resp = _req.get(url, timeout=30, headers={"User-Agent": "LLM-Client/1.0"})
+        resp.raise_for_status()
+        ct = resp.headers.get("Content-Type", "").lower()
+        url_path = url.lower().split("?")[0]
+
+        if "pdf" in ct or url_path.endswith(".pdf"):
+            return _extract_pdf(resp.content)
+        if "html" in ct or url_path.endswith((".html", ".htm")):
+            return _extract_html(resp.text)
+        return resp.text
+
+    def _extract_pdf(data: bytes) -> str:
+        try:
+            import pypdf
+        except ImportError:
+            raise ImportError(
+                "pypdf-Paket für PDF-Unterstützung erforderlich: pip install pypdf"
+            )
+        from io import BytesIO
+        reader = pypdf.PdfReader(BytesIO(data))
+        pages = [page.extract_text() or "" for page in reader.pages]
+        return "\n\n".join(p.strip() for p in pages if p.strip())
+
+    def _extract_html(html: str) -> str:
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, "html.parser")
+            for tag in soup(["script", "style", "nav", "footer", "header"]):
+                tag.decompose()
+            return soup.get_text(separator="\n", strip=True)
+        except ImportError:
+            # Fallback ohne beautifulsoup4: einfache Tag-Entfernung
+            return re.sub(r"<[^>]+>", " ", html).strip()
+
+    def _replace(match: re.Match) -> str:
+        url = match.group(0).rstrip(".,;:!?\"')>]")
+        try:
+            content = _fetch(url)
+            return f"[Inhalt von {url}]\n{content}"
+        except Exception as exc:
+            return f"[Fehler beim Laden von {url}: {exc}]"
+
+    return _URL_PATTERN.sub(_replace, text)
+
+
+# ---------------------------------------------------------------------------
 # Output helpers
 # ---------------------------------------------------------------------------
 
@@ -667,6 +761,9 @@ def main():
     system  = prompts.get("system",  "Du bist ein hilfreicher Assistent.")
     context = prompts.get("context", "")
     task    = prompts.get("task",    "")
+
+    # HTTP(S)-URLs im Kontext automatisch abrufen und durch Inhalt ersetzen
+    context = fetch_context_urls(context)
 
     if not task.strip():
         print("ERROR: 'prompts.task' is empty in the config file.", file=sys.stderr)

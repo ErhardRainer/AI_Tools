@@ -103,6 +103,29 @@ docker run \
 
 Wenn das Modell explizit JSON liefern soll, entfernt `output_format=json` allen umgebenden Text (Erklärungen, Markdown-Wrapper) und gibt nur den JSON-Block zurück. Wird kein gültiges JSON gefunden, antwortet die API mit HTTP 422.
 
+### Automatischer URL-Abruf im context-Feld
+
+Enthält `context` eine oder mehrere HTTP(S)-URLs, werden diese **automatisch abgerufen** und durch den Dokumentinhalt ersetzt:
+
+| Format | Erkennung | Verarbeitung |
+|---|---|---|
+| PDF | `.pdf` / `application/pdf` | Textextraktion via `pypdf` |
+| HTML | `.html`/`.htm` / `text/html` | Lesbartext via `beautifulsoup4` |
+| Text | alles andere | Rohtext |
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "openai",
+    "system":   "Du bist ein Experte für Textzusammenfassungen.",
+    "context":  "https://example.com/bericht.pdf",
+    "task":     "Fasse den Inhalt in 5 Stichpunkten zusammen."
+  }'
+```
+
+Für den URL-Abruf müssen im Container `requests`, `pypdf` und `beautifulsoup4` installiert sein — ist in `pip install ".[all]"` enthalten.
+
 ---
 
 ## Beispiele (curl)
