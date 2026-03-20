@@ -335,11 +335,24 @@ python llm_client.py --config config.json --provider mistral   --model codestral
 ### Alle CLI-Optionen
 
 ```
-usage: llm_client.py [-h] --config CONFIG [--provider PROVIDER] [--model MODEL]
+usage: llm_client.py [-h] --config CONFIG
+                     [--preset PRESET] [--provider PROVIDER] [--model MODEL]
+                     [--prompts-file PATH] [--prompts-name NAME]
+                     [--output DATEI] [--output-format {header,plain,json}]
+                     [--set-api-key PROVIDER KEY]
+                     [--set-default-model PROVIDER MODEL]
 
-  --config CONFIG     Pfad zur JSON-Konfigurationsdatei  (Pflichtfeld)
-  --provider          Anbieter überschreiben (siehe Tabelle oben)
-  --model             Modell überschreiben (optional)
+  --config CONFIG               Pfad zur JSON-Konfigurationsdatei  (Pflichtfeld)
+  --preset PRESET               Preset-Alias aus config.json (setzt Provider + Modell)
+  --provider PROVIDER           Anbieter überschreiben (überschreibt --preset)
+  --model MODEL                 Modell überschreiben (optional)
+  --prompts-file PATH           Externe JSON-Datei mit Prompts
+  --prompts-name NAME           Name des Prompt-Sets (für Variante b)
+  --output DATEI                Ausgabe zusätzlich in Datei schreiben
+  --output-format {header,plain,json}
+                                Format der Dateiausgabe (Standard: header)
+  --set-api-key PROVIDER KEY    API-Key in config.json schreiben und beenden
+  --set-default-model P MODEL   Standard-Modell in config.json schreiben und beenden
 ```
 
 ---
@@ -434,7 +447,81 @@ Wenn `context` leer ist, wird dieser Schritt vollständig übersprungen.
 
 ---
 
-## Beispiel-Ausgabe
+## Ausgabe-Modi
+
+Der Client unterstützt vier Ausgabe-Modi, gesteuert durch `--output` und `--output-format`.
+
+### a) Datei mit Header (Standard)
+
+Schreibt denselben Inhalt wie die Konsole in eine Datei:
+
+```bash
+python llm_client.py --config config.json --output ergebnis.txt --output-format header
+```
+
+Dateiinhalt:
+```
+Provider : openai
+Model    : gpt-4o
+System   : Du bist ein hilfreicher Assistent.
+Context  : (none)
+Task     : Erkläre Quantencomputing.
+------------------------------------------------------------
+Response:
+[Antwort des Modells]
+```
+
+### b) Datei ohne Header (nur Antwort-Text)
+
+Nur der rohe Antwort-Text — nützlich zur Weiterverarbeitung:
+
+```bash
+python llm_client.py --config config.json --output ergebnis.txt --output-format plain
+```
+
+### c) Nur Konsole
+
+Kein `--output`: Ausgabe erscheint wie bisher nur auf der Konsole.
+
+```bash
+python llm_client.py --config config.json
+```
+
+### d) JSON extrahieren
+
+Sinnvoll wenn der Task das Modell explizit zu JSON-Ausgabe auffordert. Alles außerhalb des JSON-Blocks (Erklärtext, Markdown-Wrapper) wird weggeschnitten.
+
+```bash
+# Konsole zeigt nur das extrahierte JSON
+python llm_client.py --config config.json --output-format json
+
+# Extrahiertes JSON in Datei schreiben
+python llm_client.py --config config.json --output ergebnis.json --output-format json
+```
+
+Der JSON-Extraktor erkennt:
+- Markdown-Code-Blöcke: ` ```json ... ``` ` und ` ``` ... ``` `
+- Rohe JSON-Objekte `{ ... }` und Arrays `[ ... ]`
+
+Wird kein gültiges JSON gefunden, gibt der Client eine Warnung auf `stderr` aus und zeigt die Originalantwort.
+
+### Programmatisch
+
+```python
+from LLM_Client import extract_json, format_output
+
+# Nur JSON extrahieren
+json_str = extract_json(response)           # raises ValueError wenn kein JSON
+
+# Ausgabe formatieren (für eigene Datei-Schreiblogik)
+content = format_output(response, header_lines, "header")  # → str mit Header
+content = format_output(response, header_lines, "plain")   # → nur Antwort-Text
+content = format_output(response, header_lines, "json")    # → nur JSON-Block
+```
+
+---
+
+## Beispiel-Ausgabe (Konsole)
 
 ```
 Provider : kimi
@@ -520,6 +607,7 @@ python -m unittest discover -s LLM_Client/unittest -p "test_*.py" -v
 | `test_groq.py` | GroqProvider — 7 Tests (inkl. verschiedene Modelle) |
 | `test_mistral.py` | MistralProvider — 7 Tests (inkl. codestral) |
 | `test_utils.py` | load_config, get_nested, build_provider — 13 Tests |
+| `test_output.py` | extract_json, format_output — 17 Tests |
 | `run_all_tests.py` | Runner-Skript für alle Tests zusammen |
 
 ---
@@ -537,7 +625,11 @@ examples/
 ├── run_kimi.ps1
 ├── run_deepseek.ps1
 ├── run_groq.ps1
-└── run_mistral.ps1
+├── run_mistral.ps1
+├── run_presets.ps1
+├── run_config_writer.ps1
+├── run_prompts_file.ps1
+└── run_output.ps1         ← alle vier Ausgabe-Modi (a/b/c/d)
 ```
 
 Jedes Skript definiert `$Config`, `$Provider` und `$Model` als Variablen und zeigt alle drei Aufrufmöglichkeiten (Script / Modul / CLI). Einfach das passende Skript öffnen, Variablen anpassen und ausführen.

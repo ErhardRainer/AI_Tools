@@ -34,6 +34,7 @@ Config file format: see config.template.json
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -468,6 +469,85 @@ def _write_config(config_path: str, data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Output helpers
+# ---------------------------------------------------------------------------
+
+def extract_json(text: str) -> str:
+    """
+    Extrahiert den ersten gültigen JSON-Block aus text.
+
+    Sucht in folgender Reihenfolge:
+    1. Markdown-Code-Block  ```json ... ```  oder  ``` ... ```
+    2. Rohes JSON-Objekt  { ... }
+    3. Rohes JSON-Array   [ ... ]
+
+    Returns:
+        Der extrahierte JSON-String (ohne umgebenden Markdown).
+
+    Raises:
+        ValueError: Wenn kein gültiges JSON gefunden wird.
+
+    Example:
+        extract_json('Ergebnis:\\n```json\\n{"x": 1}\\n```')
+        # → '{"x": 1}'
+    """
+    # 1. Markdown-Code-Block
+    match = re.search(r'```(?:json)?\s*\n?([\s\S]*?)\n?```', text)
+    if match:
+        candidate = match.group(1).strip()
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pass
+
+    # 2. Rohes JSON-Objekt oder -Array (greedy: von erstem Zeichen bis letztem)
+    for pattern in (r'\{[\s\S]*\}', r'\[[\s\S]*\]'):
+        match = re.search(pattern, text)
+        if match:
+            candidate = match.group(0).strip()
+            try:
+                json.loads(candidate)
+                return candidate
+            except json.JSONDecodeError:
+                pass
+
+    raise ValueError("Kein gültiges JSON in der Antwort gefunden.")
+
+
+def format_output(response: str, header_lines: list, fmt: str) -> str:
+    """
+    Formatiert die Ausgabe für das Schreiben in eine Datei oder stdout.
+
+    Args:
+        response:     Die rohe Antwort des Modells.
+        header_lines: Liste der Header-Zeilen (Provider, Model, ...).
+        fmt:          Ausgabeformat:
+                        'header' — Header + Trennlinie + "Response:" + Antwort
+                        'plain'  — nur der Antwort-Text
+                        'json'   — nur der extrahierte JSON-Block
+
+    Returns:
+        Formatierter String (endet immer mit \\n).
+
+    Raises:
+        ValueError: Bei unbekanntem Format oder wenn JSON-Extraktion fehlschlägt.
+
+    Examples:
+        format_output(resp, lines, "header")  # vollständige Ausgabe mit Header
+        format_output(resp, lines, "plain")   # nur die Antwort
+        format_output(resp, lines, "json")    # nur der JSON-Block
+    """
+    if fmt == "header":
+        return "\n".join(header_lines) + "\n" + "-" * 60 + "\nResponse:\n" + response + "\n"
+    if fmt == "plain":
+        return response + "\n"
+    if fmt == "json":
+        return extract_json(response) + "\n"
+    raise ValueError(f"Unbekanntes Ausgabeformat: '{fmt}'. Wähle: header, plain, json")
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -527,6 +607,17 @@ def main():
                         ))
     parser.add_argument("--prompts-name", default=None, metavar="NAME",
                         help="Name des Prompt-Sets (nur für Variante b, Standard: 'default')")
+    parser.add_argument("--output", default=None, metavar="DATEI",
+                        help="Ausgabe zusätzlich in eine Datei schreiben.\n"
+                             "Format wird durch --output-format gesteuert.")
+    parser.add_argument("--output-format", default="header", dest="output_format",
+                        choices=["header", "plain", "json"],
+                        help=(
+                            "Format der Dateiausgabe (Standard: header):\n"
+                            "  header — Header + Trennlinie + Response (wie Konsole)\n"
+                            "  plain  — nur der Antwort-Text, kein Header\n"
+                            "  json   — nur der extrahierte JSON-Block (alles andere wird weggeschnitten)"
+                        ))
     parser.add_argument("--set-api-key",      nargs=2, metavar=("PROVIDER", "KEY"),
                         help="API-Key in config.json schreiben und beenden.\n"
                              "Beispiel: --set-api-key openai sk-...")
@@ -585,19 +676,43 @@ def main():
 
     preset_info = f" (preset: {args.preset})" if args.preset else ""
     prompts_info = f" (file: {args.prompts_file}" + (f", name: {args.prompts_name}" if args.prompts_name else "") + ")" if args.prompts_file else ""
-    print(f"Provider : {provider_name}{preset_info}")
+
+    header_lines = [f"Provider : {provider_name}{preset_info}"]
     if prompts_info:
-        print(f"Prompts  :{prompts_info}")
-    print(f"Model    : {provider.model}")
-    print(f"System   : {system[:80]}{'...' if len(system) > 80 else ''}")
-    print(f"Context  : {context[:80]}{'...' if len(context) > 80 else ''}" if context else "Context  : (none)")
-    print(f"Task     : {task[:80]}{'...' if len(task) > 80 else ''}")
+        header_lines.append(f"Prompts  :{prompts_info}")
+    header_lines.append(f"Model    : {provider.model}")
+    header_lines.append(f"System   : {system[:80]}{'...' if len(system) > 80 else ''}")
+    header_lines.append(f"Context  : {context[:80]}{'...' if len(context) > 80 else ''}" if context else "Context  : (none)")
+    header_lines.append(f"Task     : {task[:80]}{'...' if len(task) > 80 else ''}")
+
+    for line in header_lines:
+        print(line)
     print("-" * 60)
 
     response = provider.send(system=system, context=context, task=task)
 
+    # Konsolenausgabe: bei json-Format JSON extrahieren, sonst Originalantwort
+    if args.output_format == "json":
+        try:
+            console_response = extract_json(response)
+        except ValueError as exc:
+            print(f"WARNUNG: {exc}", file=sys.stderr)
+            console_response = response
+    else:
+        console_response = response
+
     print("Response:")
-    print(response)
+    print(console_response)
+
+    # Dateiausgabe (zusätzlich zur Konsole)
+    if args.output:
+        try:
+            content = format_output(response, header_lines, args.output_format)
+            Path(args.output).write_text(content, encoding="utf-8")
+            print(f"\nAusgabe geschrieben nach: {args.output}")
+        except ValueError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

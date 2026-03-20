@@ -215,6 +215,8 @@ If `context` is empty, it is skipped entirely.
 - `set_api_key(provider, api_key, config_path)` — writes `providers.<provider>.api_key` into config.json; preserves all other fields
 - `set_default_model(provider, model, config_path)` — writes `providers.<provider>.model` into config.json; preserves all other fields
 - `_write_config(config_path, data)` — internal helper; writes dict as indented JSON
+- `extract_json(text)` — extracts the first valid JSON block from text; tries markdown code fences first, then raw `{...}`/`[...]`; raises `ValueError` if none found
+- `format_output(response, header_lines, fmt)` — formats output for file writing; `fmt` is `"header"` (full header + response), `"plain"` (response only), or `"json"` (extracted JSON only); raises `ValueError` for unknown format or missing JSON
 - `load_prompts_file(path, name?)` — loads a `{system, context, task}` dict from an external JSON file; supports two formats:
   - **Variante a** (single set): `{"system": ..., "context": ..., "task": ...}`
   - **Variante b** (named sets): `{"summarize": {"system": ..., ...}, "translate": {...}}` — select via `name`; falls back to `"default"` or the only entry if `name` omitted
@@ -226,7 +228,7 @@ If `context` is empty, it is skipped entirely.
   - `GrokProvider` (api.x.ai/v1), `KimiProvider` (api.moonshot.cn/v1), `DeepSeekProvider` (api.deepseek.com), `GroqProvider` (api.groq.com/openai/v1), `MistralProvider` (api.mistral.ai/v1)
 - `PROVIDERS` dict — registry mapping provider name → class
 - `build_provider(name, config, model_override)` — factory that instantiates the right class
-- `main()` — CLI entry point with `argparse`; supports `--preset` (auto-loads from config, overridable by `--provider`/`--model`)
+- `main()` — CLI entry point with `argparse`; supports `--preset` (auto-loads from config, overridable by `--provider`/`--model`); `--output PATH` writes output to file; `--output-format {header,plain,json}` controls file content
 
 ---
 
