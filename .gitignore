@@ -16,6 +16,10 @@ LLM_Client/config.json
 config.json
 *.secret.json
 
+# n8n custom nodes
+n8n/node_modules/
+n8n/dist/
+
 # OS
 .DS_Store
 Thumbs.db

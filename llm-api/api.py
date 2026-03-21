@@ -76,7 +76,8 @@ app = FastAPI(
     description=(
         "REST-API für LLM_Client und ImageGen.\n\n"
         "**Text-Endpunkte:** OpenAI, Claude, Gemini, Grok, Kimi, DeepSeek, Groq, Mistral.\n\n"
-        "**Bild-Endpunkte:** DALL-E, Google Imagen, Stability AI, fal.ai FLUX.\n\n"
+        "**Bild-Endpunkte:** DALL-E, Google Imagen/Gemini, Stability AI, fal.ai FLUX, "
+        "Ideogram, Leonardo AI, Adobe Firefly, AUTOMATIC1111 (lokal), ollamadiffuser (lokal).\n\n"
         "Authentifizierung: Header `X-API-Key` (nur wenn Umgebungsvariable `API_KEY` gesetzt)."
     ),
     version="2.0.0",
@@ -167,8 +168,11 @@ class ProvidersResponse(BaseModel):
 class ImageRequest(BaseModel):
     provider: str | None = Field(
         None,
-        description="Provider: openai, google, stability, fal.",
-        examples=["openai", "fal"],
+        description=(
+            "Provider: openai, google, stability, fal, ideogram, leonardo, firefly, "
+            "auto1111 (lokal), ollamadiffuser (lokal)."
+        ),
+        examples=["openai", "fal", "ideogram", "local-flux"],
     )
     preset: str | None = Field(
         None,
@@ -408,7 +412,7 @@ def generate_image(
             kwargs["size"] = req.size
         if req.quality:
             kwargs["quality"] = req.quality
-    elif provider_cls_name in ("StabilityProvider", "GoogleImageProvider"):
+    elif provider_cls_name in ("StabilityProvider", "GoogleImageProvider", "IdeogramProvider"):
         if req.aspect_ratio:
             kwargs["aspect_ratio"] = req.aspect_ratio
     elif provider_cls_name == "FalProvider":
@@ -420,6 +424,10 @@ def generate_image(
                 "9:16": "portrait_16_9", "4:3": "landscape_4_3", "3:4": "portrait_4_3",
             }
             kwargs["image_size"] = _ar_map.get(req.aspect_ratio, req.aspect_ratio)
+    elif provider_cls_name in ("FireflyProvider", "Auto1111Provider"):
+        if req.size:
+            kwargs["size"] = req.size
+    # LeonardoProvider, OllamaDiffuserProvider: keine speziellen kwargs nötig
 
     try:
         result = provider.generate(req.prompt, **kwargs)

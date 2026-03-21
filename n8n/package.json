@@ -1,0 +1,39 @@
+{
+  "name": "@openai-tools/n8n-nodes-media-api",
+  "version": "1.0.0",
+  "description": "n8n custom nodes for LLM text generation and image generation via Media API",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "llm",
+    "imagegen",
+    "openai",
+    "anthropic",
+    "gemini"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run copy:icons",
+    "copy:icons": "cp nodes/LlmClient/llm-client.svg dist/nodes/LlmClient/ 2>/dev/null; cp nodes/ImageGen/image-gen.svg dist/nodes/ImageGen/ 2>/dev/null; true",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/MediaApiCredentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/LlmClient/LlmClient.node.js",
+      "dist/nodes/ImageGen/ImageGen.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "^2.13.0"
+  }
+}
