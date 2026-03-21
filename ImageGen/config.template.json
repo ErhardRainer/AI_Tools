@@ -17,22 +17,52 @@
     "fal": {
       "api_key": "DEIN_FAL_KEY",
       "model": "fal-ai/flux/dev"
+    },
+    "ideogram": {
+      "api_key": "DEIN_IDEOGRAM_KEY",
+      "model": "V_3"
+    },
+    "leonardo": {
+      "api_key": "DEIN_LEONARDO_KEY",
+      "model": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"
+    },
+    "firefly": {
+      "client_id":     "DEIN_ADOBE_CLIENT_ID",
+      "client_secret": "DEIN_ADOBE_CLIENT_SECRET",
+      "model": "firefly-image-model-3"
+    },
+    "auto1111": {
+      "base_url": "http://127.0.0.1:7860",
+      "model": ""
+    },
+    "ollamadiffuser": {
+      "base_url": "http://localhost:8000",
+      "model": "flux.1-schnell"
     }
   },
 
   "presets": {
-    "quality":      { "provider": "openai",    "model": "dall-e-3" },
-    "fast":         { "provider": "fal",       "model": "fal-ai/flux/schnell" },
-    "flux":         { "provider": "fal",       "model": "fal-ai/flux/dev" },
-    "flux-pro":     { "provider": "fal",       "model": "fal-ai/flux-pro" },
-    "sd3":          { "provider": "stability", "model": "sd3-large" },
-    "ultra":        { "provider": "stability", "model": "ultra" },
-    "imagen4":      { "provider": "google",    "model": "imagen-4.0-generate-001" },
-    "imagen4-fast": { "provider": "google",    "model": "imagen-4.0-fast-generate-001" },
-    "imagen4-ultra":{ "provider": "google",    "model": "imagen-4.0-ultra-generate-001" },
-    "imagen3":      { "provider": "google",    "model": "imagen-3.0-generate-002" },
-    "gemini-flash": { "provider": "google",    "model": "gemini-2.5-flash-image-preview" },
-    "gemini-flash-exp": { "provider": "google","model": "gemini-2.0-flash-exp" }
+    "quality":          { "provider": "openai",         "model": "dall-e-3" },
+    "fast":             { "provider": "fal",            "model": "fal-ai/flux/schnell" },
+    "flux":             { "provider": "fal",            "model": "fal-ai/flux/dev" },
+    "flux-pro":         { "provider": "fal",            "model": "fal-ai/flux-pro" },
+    "sd3":              { "provider": "stability",      "model": "sd3-large" },
+    "sd3.5":            { "provider": "stability",      "model": "sd3.5-large" },
+    "sd3.5-turbo":      { "provider": "stability",      "model": "sd3.5-large-turbo" },
+    "ultra":            { "provider": "stability",      "model": "ultra" },
+    "imagen4":          { "provider": "google",         "model": "imagen-4.0-generate-001" },
+    "imagen4-fast":     { "provider": "google",         "model": "imagen-4.0-fast-generate-001" },
+    "imagen4-ultra":    { "provider": "google",         "model": "imagen-4.0-ultra-generate-001" },
+    "imagen3":          { "provider": "google",         "model": "imagen-3.0-generate-002" },
+    "gemini-flash":     { "provider": "google",         "model": "gemini-2.5-flash-image-preview" },
+    "gemini-flash-exp": { "provider": "google",         "model": "gemini-2.0-flash-exp" },
+    "ideogram":         { "provider": "ideogram",       "model": "V_3" },
+    "ideogram-v2":      { "provider": "ideogram",       "model": "V_2A" },
+    "leonardo":         { "provider": "leonardo",       "model": "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3" },
+    "firefly":          { "provider": "firefly",        "model": "firefly-image-model-3" },
+    "local-flux":       { "provider": "ollamadiffuser", "model": "flux.1-schnell" },
+    "local-sdxl":       { "provider": "ollamadiffuser", "model": "sdxl" },
+    "local-a1111":      { "provider": "auto1111",       "model": "" }
   },
 
   "defaults": {

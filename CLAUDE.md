@@ -316,8 +316,13 @@ Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selb
 |---|---|---|---|
 | `openai` | `OpenAIImageProvider` | `dall-e-3` | `pip install openai` |
 | `google` | `GoogleImageProvider` | `imagen-4.0-generate-001` | `pip install google-genai` — Imagen 4 via `generate_images()`, Gemini Flash Image via `generate_content()` |
-| `stability` | `StabilityProvider` | `core` | `pip install requests` (REST API) |
+| `stability` | `StabilityProvider` | `core` | `pip install requests` — core, ultra, sd3/sd3.5 Varianten |
 | `fal` | `FalProvider` | `fal-ai/flux/dev` | `pip install requests` (REST API) |
+| `ideogram` | `IdeogramProvider` | `V_3` | `pip install requests` — V_3, V_2A, V_2; `Api-Key` Header |
+| `leonardo` | `LeonardoProvider` | Phoenix 1.0 UUID | `pip install requests` — async Job-System mit Polling |
+| `firefly` | `FireflyProvider` | `firefly-image-model-3` | `pip install requests` — OAuth2 Client Credentials (`client_id` + `client_secret`) |
+| `auto1111` | `Auto1111Provider` | _(aktuell geladen)_ | `pip install requests` — lokale A1111-Instanz, kein API-Key |
+| `ollamadiffuser` | `OllamaDiffuserProvider` | `flux.1-schnell` | `pip install requests` — lokaler ollamadiffuser-Server, kein API-Key |
 
 ### Installation
 
@@ -331,11 +336,16 @@ pip install openai           # zusätzlich für DALL-E
 - `ImageData` — einzelnes Bild: `url`, `b64_json`, `save(path)`
 - `ImageResult` — Ergebnis: `provider`, `model`, `images[]`, `revised_prompt`, `save_all(pattern)`
 - `OpenAIImageProvider` — DALL-E 3/2; `.generate(prompt, size, quality, n, response_format)`
-- `GoogleImageProvider` — Imagen 3; `.generate(prompt, n, aspect_ratio)` via `google-genai`
-- `StabilityProvider` — Core/SD3/Ultra via REST; `.generate(prompt, aspect_ratio, negative_prompt, n)`
+- `GoogleImageProvider` — Imagen 4/3 (`generate_images`) + Gemini Flash Image (`generate_content`); Modellerkennung via Prefix
+- `StabilityProvider` — Core/Ultra/SD3/SD3.5 via REST; `.generate(prompt, aspect_ratio, negative_prompt, n)`
 - `FalProvider` — FLUX via REST; `.generate(prompt, image_size, n)`
+- `IdeogramProvider` — V3/V2A/V2 via REST; `Api-Key` Header; URLs werden sofort heruntergeladen
+- `LeonardoProvider` — async: Job anlegen → pollen bis `COMPLETE`; `.generate(prompt, n, width, height)`
+- `FireflyProvider` — OAuth2 Client Credentials; Token wird gecacht; `.generate(prompt, n, size)`
+- `Auto1111Provider` — lokale A1111-Instanz; optionaler Checkpoint-Wechsel via `/sdapi/v1/options`
+- `OllamaDiffuserProvider` — lokaler ollamadiffuser-Server; `.generate(prompt, n)` → rohe Bild-Bytes
 - `PROVIDERS` dict — Registry `name → Klasse`
-- `build_provider(name, config, model_override)` — Factory
+- `build_provider(name, config, model_override)` — Factory; Sonderbehandlung für `firefly` (OAuth2) und lokale Provider (kein api_key nötig)
 - `mapping_reload(source)` / `resolve_preset(name)` — Preset-System (identisch zu LLM_Client)
 - `main()` — CLI mit `--prompt`, `--provider`, `--preset`, `--model`, `--output`, `--n`, `--size`, `--quality`, `--aspect-ratio`
 
