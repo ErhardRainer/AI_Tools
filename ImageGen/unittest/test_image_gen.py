@@ -168,21 +168,26 @@ class TestOpenAIImageProvider(unittest.TestCase):
 
 class TestGoogleImageProvider(unittest.TestCase):
 
-    def _make_provider(self):
+    def _make_imagen_provider(self, model="imagen-4.0-generate-001"):
         mock_genai = MagicMock()
         mock_genai.types.GenerateImagesConfig = MagicMock(return_value=MagicMock())
-        with patch.dict("sys.modules", {"google": MagicMock(), "google.genai": mock_genai}):
-            # Patch the import inside __init__
-            with patch("ImageGen.image_gen.GoogleImageProvider.__init__") as mock_init:
-                mock_init.return_value = None
-                p = GoogleImageProvider.__new__(GoogleImageProvider)
-                p.model = "imagen-3.0-generate-002"
-                p._genai = mock_genai
-                p.client = MagicMock()
+        p = GoogleImageProvider.__new__(GoogleImageProvider)
+        p.model = model
+        p._genai = mock_genai
+        p.client = MagicMock()
         return p
 
-    def test_generate_returns_image_result(self):
-        p = self._make_provider()
+    def _make_gemini_provider(self, model="gemini-2.5-flash-image-preview"):
+        mock_genai = MagicMock()
+        mock_genai.types.GenerateContentConfig = MagicMock(return_value=MagicMock())
+        p = GoogleImageProvider.__new__(GoogleImageProvider)
+        p.model = model
+        p._genai = mock_genai
+        p.client = MagicMock()
+        return p
+
+    def test_imagen_generate_returns_image_result(self):
+        p = self._make_imagen_provider()
         fake_img = MagicMock()
         fake_img.image.image_bytes = b"fake-png-bytes"
         p.client.models.generate_images.return_value = MagicMock(
@@ -194,6 +199,67 @@ class TestGoogleImageProvider(unittest.TestCase):
         self.assertEqual(len(result.images), 1)
         expected_b64 = base64.b64encode(b"fake-png-bytes").decode()
         self.assertEqual(result.images[0].b64_json, expected_b64)
+
+    def test_imagen_default_model_is_v4(self):
+        self.assertEqual(GoogleImageProvider.DEFAULT_MODEL, "imagen-4.0-generate-001")
+
+    def test_gemini_flash_generate_returns_image_result(self):
+        p = self._make_gemini_provider()
+        # Gemini Flash response: candidates[0].content.parts mit inline_data
+        fake_part = MagicMock()
+        fake_part.text = None
+        fake_part.inline_data = MagicMock()
+        fake_part.inline_data.data = b"gemini-image-bytes"
+        p.client.models.generate_content.return_value = MagicMock(
+            candidates=[MagicMock(content=MagicMock(parts=[fake_part]))]
+        )
+        result = p.generate("a sunset")
+        self.assertIsInstance(result, ImageResult)
+        self.assertEqual(result.provider, "google")
+        self.assertEqual(len(result.images), 1)
+        expected_b64 = base64.b64encode(b"gemini-image-bytes").decode()
+        self.assertEqual(result.images[0].b64_json, expected_b64)
+
+    def test_gemini_flash_no_image_raises(self):
+        p = self._make_gemini_provider()
+        # Antwort ohne Bild-Teile
+        text_only_part = MagicMock()
+        text_only_part.text = "Ich kann kein Bild generieren."
+        text_only_part.inline_data = None
+        p.client.models.generate_content.return_value = MagicMock(
+            candidates=[MagicMock(content=MagicMock(parts=[text_only_part]))]
+        )
+        with self.assertRaises(ValueError):
+            p.generate("a scene")
+
+    def test_is_gemini_model_detection(self):
+        p_imagen = self._make_imagen_provider("imagen-4.0-generate-001")
+        p_gemini = self._make_gemini_provider("gemini-2.0-flash-exp")
+        self.assertFalse(p_imagen._is_gemini_model())
+        self.assertTrue(p_gemini._is_gemini_model())
+
+    def test_gemini_flash_uses_generate_content(self):
+        p = self._make_gemini_provider()
+        fake_part = MagicMock()
+        fake_part.text = None
+        fake_part.inline_data = MagicMock(data=b"bytes")
+        p.client.models.generate_content.return_value = MagicMock(
+            candidates=[MagicMock(content=MagicMock(parts=[fake_part]))]
+        )
+        p.generate("test")
+        p.client.models.generate_content.assert_called_once()
+        p.client.models.generate_images.assert_not_called()
+
+    def test_imagen_uses_generate_images(self):
+        p = self._make_imagen_provider()
+        fake_img = MagicMock()
+        fake_img.image.image_bytes = b"bytes"
+        p.client.models.generate_images.return_value = MagicMock(
+            generated_images=[fake_img]
+        )
+        p.generate("test")
+        p.client.models.generate_images.assert_called_once()
+        p.client.models.generate_content.assert_not_called()
 
     def test_missing_sdk_raises(self):
         with patch.dict("sys.modules", {"google": None, "google.genai": None}):

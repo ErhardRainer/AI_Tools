@@ -315,7 +315,7 @@ Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selb
 | Provider | Klasse | Standard-Modell | SDK |
 |---|---|---|---|
 | `openai` | `OpenAIImageProvider` | `dall-e-3` | `pip install openai` |
-| `google` | `GoogleImageProvider` | `imagen-3.0-generate-002` | `pip install google-genai` |
+| `google` | `GoogleImageProvider` | `imagen-4.0-generate-001` | `pip install google-genai` — Imagen 4 via `generate_images()`, Gemini Flash Image via `generate_content()` |
 | `stability` | `StabilityProvider` | `core` | `pip install requests` (REST API) |
 | `fal` | `FalProvider` | `fal-ai/flux/dev` | `pip install requests` (REST API) |
 

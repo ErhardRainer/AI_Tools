@@ -8,7 +8,7 @@
     },
     "google": {
       "api_key": "DEIN_GOOGLE_AI_KEY",
-      "model": "imagen-3.0-generate-002"
+      "model": "imagen-4.0-generate-001"
     },
     "stability": {
       "api_key": "sk-DEIN_STABILITY_KEY",
@@ -21,14 +21,18 @@
   },
 
   "presets": {
-    "quality":  { "provider": "openai",    "model": "dall-e-3" },
-    "fast":     { "provider": "fal",       "model": "fal-ai/flux/schnell" },
-    "flux":     { "provider": "fal",       "model": "fal-ai/flux/dev" },
-    "flux-pro": { "provider": "fal",       "model": "fal-ai/flux-pro" },
-    "sd3":      { "provider": "stability", "model": "sd3-large" },
-    "ultra":    { "provider": "stability", "model": "ultra" },
-    "imagen":   { "provider": "google",    "model": "imagen-3.0-generate-002" },
-    "imagen-fast": { "provider": "google", "model": "imagen-3.0-fast-generate-001" }
+    "quality":      { "provider": "openai",    "model": "dall-e-3" },
+    "fast":         { "provider": "fal",       "model": "fal-ai/flux/schnell" },
+    "flux":         { "provider": "fal",       "model": "fal-ai/flux/dev" },
+    "flux-pro":     { "provider": "fal",       "model": "fal-ai/flux-pro" },
+    "sd3":          { "provider": "stability", "model": "sd3-large" },
+    "ultra":        { "provider": "stability", "model": "ultra" },
+    "imagen4":      { "provider": "google",    "model": "imagen-4.0-generate-001" },
+    "imagen4-fast": { "provider": "google",    "model": "imagen-4.0-fast-generate-001" },
+    "imagen4-ultra":{ "provider": "google",    "model": "imagen-4.0-ultra-generate-001" },
+    "imagen3":      { "provider": "google",    "model": "imagen-3.0-generate-002" },
+    "gemini-flash": { "provider": "google",    "model": "gemini-2.5-flash-image-preview" },
+    "gemini-flash-exp": { "provider": "google","model": "gemini-2.0-flash-exp" }
   },
 
   "defaults": {

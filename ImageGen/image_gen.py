@@ -171,35 +171,47 @@ class OpenAIImageProvider:
 
 
 # ---------------------------------------------------------------------------
-# Provider: Google Imagen
+# Provider: Google Imagen & Gemini Flash Image
 # ---------------------------------------------------------------------------
 
 class GoogleImageProvider:
     """
-    Google Imagen 3 via google-genai SDK.
-    https://ai.google.dev/api/generate-images
+    Google Bildgenerierung via google-genai SDK — zwei API-Varianten:
 
-    Modelle:
-        imagen-3.0-generate-002  — Imagen 3 (Standard)
-        imagen-3.0-fast-generate-001  — Imagen 3 Fast
+    ── Imagen-Familie (generate_images) ────────────────────────────────────
+        imagen-4.0-generate-001       — Imagen 4 (Standard, GA)
+        imagen-4.0-ultra-generate-001 — Imagen 4 Ultra (höchste Qualität)
+        imagen-4.0-fast-generate-001  — Imagen 4 Fast (günstig/schnell)
+        imagen-3.0-generate-002       — Imagen 3 (ältere Generation)
 
-    Seitenverhältnisse: 1:1, 3:4, 4:3, 9:16, 16:9
+    ── Gemini Flash Image (generate_content + response_modalities) ─────────
+        gemini-2.5-flash-image-preview — Gemini 2.5 Flash Image (Vorschau)
+        gemini-2.0-flash-exp           — Gemini 2.0 Flash Experimental
 
+        Diese Modelle kombinieren Text- und Bildgenerierung. Der Provider
+        extrahiert automatisch alle Bild-Teile aus der Antwort.
+
+    Seitenverhältnisse (Imagen): 1:1, 3:4, 4:3, 9:16, 16:9
     Abhängigkeit: pip install google-genai
     """
 
-    DEFAULT_MODEL = "imagen-3.0-generate-002"
+    DEFAULT_MODEL = "imagen-4.0-generate-001"
+
+    _GEMINI_MODELS = ("gemini-",)  # Prefix-Erkennung für Gemini Flash Image
 
     def __init__(self, api_key: str, model: str = ""):
         try:
             from google import genai
         except ImportError:
             raise ImportError(
-                "google-genai package required for Google Imagen: pip install google-genai"
+                "google-genai package required for Google image generation: pip install google-genai"
             )
         self.client = genai.Client(api_key=api_key)
         self.model = model or self.DEFAULT_MODEL
         self._genai = genai
+
+    def _is_gemini_model(self) -> bool:
+        return any(self.model.startswith(prefix) for prefix in self._GEMINI_MODELS)
 
     def generate(
         self,
@@ -208,6 +220,12 @@ class GoogleImageProvider:
         n: int = 1,
         aspect_ratio: str = "1:1",
     ) -> ImageResult:
+        if self._is_gemini_model():
+            return self._generate_gemini_flash(prompt, n=n)
+        return self._generate_imagen(prompt, n=n, aspect_ratio=aspect_ratio)
+
+    def _generate_imagen(self, prompt: str, *, n: int, aspect_ratio: str) -> ImageResult:
+        """Imagen 3/4 via generate_images()."""
         response = self.client.models.generate_images(
             model=self.model,
             prompt=prompt,
@@ -220,11 +238,34 @@ class GoogleImageProvider:
             ImageData(b64_json=base64.b64encode(img.image.image_bytes).decode())
             for img in response.generated_images
         ]
-        return ImageResult(
-            provider="google",
-            model=self.model,
-            images=images,
-        )
+        return ImageResult(provider="google", model=self.model, images=images)
+
+    def _generate_gemini_flash(self, prompt: str, *, n: int) -> ImageResult:
+        """
+        Gemini 2.0/2.5 Flash Image via generate_content() mit response_modalities.
+        Generiert n Bilder durch n aufeinanderfolgende API-Calls (Modell liefert
+        je Aufruf ein Bild und optionalen Begleittext).
+        """
+        images = []
+        for _ in range(max(1, n)):
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=self._genai.types.GenerateContentConfig(
+                    response_modalities=["Text", "Image"],
+                ),
+            )
+            for part in response.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    b64 = base64.b64encode(part.inline_data.data).decode()
+                    images.append(ImageData(b64_json=b64))
+
+        if not images:
+            raise ValueError(
+                f"Gemini Modell '{self.model}' hat keine Bild-Daten zurückgegeben. "
+                "Prüfe ob das Modell Bildgenerierung unterstützt."
+            )
+        return ImageResult(provider="google", model=self.model, images=images)
 
 
 # ---------------------------------------------------------------------------

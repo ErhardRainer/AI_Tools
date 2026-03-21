@@ -9,7 +9,7 @@ Einheitlicher Bildgenerierungs-Client für mehrere KI-Provider. Verwendbar als *
 | Provider | Klasse | Standard-Modell | Modelle |
 |---|---|---|---|
 | `openai` | `OpenAIImageProvider` | `dall-e-3` | dall-e-3, dall-e-2 |
-| `google` | `GoogleImageProvider` | `imagen-3.0-generate-002` | imagen-3.0-generate-002, imagen-3.0-fast-generate-001 |
+| `google` | `GoogleImageProvider` | `imagen-4.0-generate-001` | imagen-4.0-generate-001, imagen-4.0-ultra-generate-001, imagen-4.0-fast-generate-001, imagen-3.0-generate-002, gemini-2.5-flash-image-preview, gemini-2.0-flash-exp |
 | `stability` | `StabilityProvider` | `core` | core, sd3-large, sd3-large-turbo, sd3-medium, ultra |
 | `fal` | `FalProvider` | `fal-ai/flux/dev` | flux/dev, flux/schnell, flux-pro, flux-realism, … |
 
@@ -77,8 +77,12 @@ image-gen --config ImageGen/config.json \
 | `flux-pro` | fal | fal-ai/flux-pro |
 | `sd3` | stability | sd3-large |
 | `ultra` | stability | ultra |
-| `imagen` | google | imagen-3.0-generate-002 |
-| `imagen-fast` | google | imagen-3.0-fast-generate-001 |
+| `imagen4` | google | imagen-4.0-generate-001 |
+| `imagen4-fast` | google | imagen-4.0-fast-generate-001 |
+| `imagen4-ultra` | google | imagen-4.0-ultra-generate-001 |
+| `imagen3` | google | imagen-3.0-generate-002 |
+| `gemini-flash` | google | gemini-2.5-flash-image-preview |
+| `gemini-flash-exp` | google | gemini-2.0-flash-exp |
 
 ```bash
 image-gen --config config.json --preset flux --prompt "..."
