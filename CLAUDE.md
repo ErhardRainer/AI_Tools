@@ -2,24 +2,64 @@
 
 ## Repository Overview
 
-This repository (`OpenAI`) contains Python-based tools for working with the OpenAI API, primarily focused on the **OpenAI Assistants API**. The project is documented in German with some English identifiers.
+This repository (`AI_Tools`) is a comprehensive knowledge base and tool collection for **Artificial Intelligence** — covering LLMs, image generation, video generation, programmatic API access, and AI agents. The project is documented in German with some English identifiers.
 
-**Repository description (README):** _"Tools rund um OpenAI wie Assistant AI und Chat-GPT-API usw."_ (Tools around OpenAI such as Assistant AI and Chat-GPT-API, etc.)
+**Repository description (README):** _"Werkzeugsammlung rund um Künstliche Intelligenz — LLMs, Bildgenerierung, Videogenerierung, programmatischer Zugriff und KI-Agenten."_
 
 ---
 
 ## Structure
 
 ```
-OpenAI/
-├── README.md                          # Brief German description
+AI_Tools/
+├── README.md                          # Main overview (LLMs, Image, Video, Agents)
 ├── CLAUDE.md                          # This file
 ├── .gitignore                         # Excludes real config.json and secrets
+├── pyproject.toml                     # Python package definition
+│
+├── ai_openai.md                       # Detail page: OpenAI
+├── ai_claude.md                       # Detail page: Anthropic Claude
+├── ai_google.md                       # Detail page: Google Gemini / Gemma
+├── ai_xai.md                          # Detail page: xAI Grok
+├── ai_mistral.md                      # Detail page: Mistral AI
+├── ai_deepseek.md                     # Detail page: DeepSeek
+├── ai_moonshot.md                     # Detail page: Moonshot AI / Kimi
+├── ai_meta.md                         # Detail page: Meta LLaMA
+├── ai_microsoft.md                    # Detail page: Microsoft Phi
+├── ai_alibaba.md                      # Detail page: Alibaba Qwen
+├── ai_cohere.md                       # Detail page: Cohere
+├── ai_zhipu.md                        # Detail page: Zhipu AI / GLM
+├── ai_groq.md                         # Detail page: Groq
+├── ai_together.md                     # Detail page: Together AI
+├── ai_fireworks.md                    # Detail page: Fireworks AI
+│
+├── ai_image_dalle.md                  # Detail page: DALL-E
+├── ai_image_midjourney.md             # Detail page: Midjourney
+├── ai_image_stablediffusion.md        # Detail page: Stable Diffusion
+├── ai_image_flux.md                   # Detail page: Flux
+├── ai_image_firefly.md                # Detail page: Adobe Firefly
+├── ai_image_imagen.md                 # Detail page: Google Imagen
+├── ai_image_ideogram.md               # Detail page: Ideogram
+├── ai_image_leonardo.md               # Detail page: Leonardo AI
+├── ai_image_recraft.md                # Detail page: Recraft
+│
+├── ai_video_sora.md                   # Detail page: Sora
+├── ai_video_veo.md                    # Detail page: Veo
+├── ai_video_runway.md                 # Detail page: Runway
+├── ai_video_kling.md                  # Detail page: Kling
+├── ai_video_pika.md                   # Detail page: Pika
+├── ai_video_luma.md                   # Detail page: Luma Dream Machine
+├── ai_video_minimax.md                # Detail page: MiniMax / Hailuo
+├── ai_video_svd.md                    # Detail page: Stable Video Diffusion
+│
 ├── Assistant_AI/
 │   └── Assistant_AI.ipynb             # Assistants API notebook (47 cells)
+│
 └── LLM_Client/
     ├── llm_client.py                  # Multi-provider LLM client script
-    └── config.template.json           # Config template (copy → config.json)
+    ├── config.template.json           # Config template (copy → config.json)
+    ├── examples/                      # PowerShell example scripts
+    └── unittest/                      # Unit tests
 ```
 
 ---
