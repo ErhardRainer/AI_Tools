@@ -11,6 +11,7 @@ This repository (`AI_Tools`) is a comprehensive knowledge base and tool collecti
 ## Structure
 
 ```
+<<<<<<< HEAD
 AI_Tools/
 ├── README.md                          # Main overview (LLMs, Image, Video, Agents)
 ├── CLAUDE.md                          # This file
@@ -60,6 +61,30 @@ AI_Tools/
     ├── config.template.json           # Config template (copy → config.json)
     ├── examples/                      # PowerShell example scripts
     └── unittest/                      # Unit tests
+=======
+OpenAI/
+├── README.md                          # Repository-Übersicht
+├── CLAUDE.md                          # This file
+├── .gitignore                         # Excludes real config.json and secrets
+├── pyproject.toml                     # Package build config (pip install .)
+├── Assistant_AI/
+│   └── Assistant_AI.ipynb             # Assistants API notebook (47 cells)
+├── LLM_Client/                        # Text → Text (8 Provider)
+│   ├── llm_client.py
+│   └── config.template.json
+├── ImageGen/                          # Text → Bild (4 Provider)
+│   ├── image_gen.py
+│   └── config.template.json
+└── llm-api/                           # FastAPI: /chat + /image
+    ├── api.py
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── requirements.txt
+    ├── examples/
+    │   └── requests.ps1
+    └── tests/
+        └── test_api.py
+>>>>>>> origin/claude/add-claude-documentation-h4UFb
 ```
 
 ---
@@ -252,6 +277,15 @@ If `context` is empty, it is skipped entirely.
 
 - `load_config(path)` — reads JSON config
 - `get_nested(data, "a.b.c")` — dot-path accessor
+- `set_api_key(provider, api_key, config_path)` — writes `providers.<provider>.api_key` into config.json; preserves all other fields
+- `set_default_model(provider, model, config_path)` — writes `providers.<provider>.model` into config.json; preserves all other fields
+- `_write_config(config_path, data)` — internal helper; writes dict as indented JSON
+- `extract_json(text)` — extracts the first valid JSON block from text; tries markdown code fences first, then raw `{...}`/`[...]`; raises `ValueError` if none found
+- `format_output(response, header_lines, fmt)` — formats output for file writing; `fmt` is `"header"` (full header + response), `"plain"` (response only), or `"json"` (extracted JSON only); raises `ValueError` for unknown format or missing JSON
+- `fetch_context_urls(text)` — detects HTTP(S)-URLs in text via regex and replaces each with the fetched content; supports PDF (via `pypdf`), HTML (via `beautifulsoup4`, with tag-strip fallback), and plain text; unreachable URLs are replaced with an error message; optional deps: `requests`, `pypdf`, `beautifulsoup4` (`pip install ".[url-fetch]"`)
+- `load_prompts_file(path, name?)` — loads a `{system, context, task}` dict from an external JSON file; supports two formats:
+  - **Variante a** (single set): `{"system": ..., "context": ..., "task": ...}`
+  - **Variante b** (named sets): `{"summarize": {"system": ..., ...}, "translate": {...}}` — select via `name`; falls back to `"default"` or the only entry if `name` omitted
 - `PRESET_REGISTRY` — module-level dict: alias → `{"provider": ..., "model": ...}`
 - `mapping_reload(source)` — loads/reloads preset mapping from a JSON file path or dict; mutates `PRESET_REGISTRY` in-place so all references stay valid
 - `resolve_preset(name)` — returns `(provider, model)` tuple for an alias; raises `KeyError` if unknown
@@ -260,7 +294,7 @@ If `context` is empty, it is skipped entirely.
   - `GrokProvider` (api.x.ai/v1), `KimiProvider` (api.moonshot.cn/v1), `DeepSeekProvider` (api.deepseek.com), `GroqProvider` (api.groq.com/openai/v1), `MistralProvider` (api.mistral.ai/v1)
 - `PROVIDERS` dict — registry mapping provider name → class
 - `build_provider(name, config, model_override)` — factory that instantiates the right class
-- `main()` — CLI entry point with `argparse`; supports `--preset` (auto-loads from config, overridable by `--provider`/`--model`)
+- `main()` — CLI entry point with `argparse`; supports `--preset` (auto-loads from config, overridable by `--provider`/`--model`); `--output PATH` writes output to file; `--output-format {header,plain,json}` controls file content
 
 ---
 
@@ -295,6 +329,7 @@ jupyter lab
 Jede `README.md` im Repository muss aktuell gehalten werden. Bei jeder Änderung an Code, Konfiguration, Schnittstellen oder Verzeichnisstruktur ist die zugehörige `README.md` im selben Verzeichnis **im gleichen Commit** zu aktualisieren. Das gilt für alle Ebenen:
 - `/README.md` — bei strukturellen Änderungen am Repository
 - `LLM_Client/README.md` — bei Änderungen an `llm_client.py` oder `config.template.json`
+- `llm-api/README.md` — bei Änderungen an `llm-api/api.py`, `Dockerfile` oder `docker-compose.yml`
 
 ### Pflichtbestandteile jeder Erweiterung
 
@@ -320,6 +355,106 @@ Jede neue Funktion, jeder neue Provider oder jedes neue Feature **muss** im selb
 - [ ] PowerShell-Wrapper angelegt unter `LLM_Client/examples/run_<feature>.ps1`
 - [ ] `README.md` und `CLAUDE.md` aktualisiert
 - [ ] Kein Secret / API-Key im Code oder in Templates hardcodiert
+
+---
+
+## ImageGen — Multi-Provider Bildgenerierung
+
+`ImageGen/` ist ein installierbares Python-Paket für Bildgenerierung (Text → Bild). Gleiche Architektur wie `LLM_Client`.
+
+### Unterstützte Provider
+
+| Provider | Klasse | Standard-Modell | SDK |
+|---|---|---|---|
+| `openai` | `OpenAIImageProvider` | `dall-e-3` | `pip install openai` |
+| `google` | `GoogleImageProvider` | `imagen-4.0-generate-001` | `pip install google-genai` — Imagen 4 via `generate_images()`, Gemini Flash Image via `generate_content()` |
+| `stability` | `StabilityProvider` | `core` | `pip install requests` — core, ultra, sd3/sd3.5 Varianten |
+| `fal` | `FalProvider` | `fal-ai/flux/dev` | `pip install requests` (REST API) |
+| `ideogram` | `IdeogramProvider` | `V_3` | `pip install requests` — V_3, V_2A, V_2; `Api-Key` Header |
+| `leonardo` | `LeonardoProvider` | Phoenix 1.0 UUID | `pip install requests` — async Job-System mit Polling |
+| `firefly` | `FireflyProvider` | `firefly-image-model-3` | `pip install requests` — OAuth2 Client Credentials (`client_id` + `client_secret`) |
+| `auto1111` | `Auto1111Provider` | _(aktuell geladen)_ | `pip install requests` — lokale A1111-Instanz, kein API-Key |
+| `ollamadiffuser` | `OllamaDiffuserProvider` | `flux.1-schnell` | `pip install requests` — lokaler ollamadiffuser-Server, kein API-Key |
+
+### Installation
+
+```bash
+pip install ".[imagegen]"   # requests + google-genai
+pip install openai           # zusätzlich für DALL-E
+```
+
+### Architecture
+
+- `ImageData` — einzelnes Bild: `url`, `b64_json`, `save(path)`
+- `ImageResult` — Ergebnis: `provider`, `model`, `images[]`, `revised_prompt`, `save_all(pattern)`
+- `OpenAIImageProvider` — DALL-E 3/2; `.generate(prompt, size, quality, n, response_format)`
+- `GoogleImageProvider` — Imagen 4/3 (`generate_images`) + Gemini Flash Image (`generate_content`); Modellerkennung via Prefix
+- `StabilityProvider` — Core/Ultra/SD3/SD3.5 via REST; `.generate(prompt, aspect_ratio, negative_prompt, n)`
+- `FalProvider` — FLUX via REST; `.generate(prompt, image_size, n)`
+- `IdeogramProvider` — V3/V2A/V2 via REST; `Api-Key` Header; URLs werden sofort heruntergeladen
+- `LeonardoProvider` — async: Job anlegen → pollen bis `COMPLETE`; `.generate(prompt, n, width, height)`
+- `FireflyProvider` — OAuth2 Client Credentials; Token wird gecacht; `.generate(prompt, n, size)`
+- `Auto1111Provider` — lokale A1111-Instanz; optionaler Checkpoint-Wechsel via `/sdapi/v1/options`
+- `OllamaDiffuserProvider` — lokaler ollamadiffuser-Server; `.generate(prompt, n)` → rohe Bild-Bytes
+- `PROVIDERS` dict — Registry `name → Klasse`
+- `build_provider(name, config, model_override)` — Factory; Sonderbehandlung für `firefly` (OAuth2) und lokale Provider (kein api_key nötig)
+- `mapping_reload(source)` / `resolve_preset(name)` — Preset-System (identisch zu LLM_Client)
+- `main()` — CLI mit `--prompt`, `--provider`, `--preset`, `--model`, `--output`, `--n`, `--size`, `--quality`, `--aspect-ratio`
+
+### Tests
+
+```bash
+python ImageGen/unittest/run_all_tests.py
+```
+
+---
+
+## LLM API — FastAPI-Wrapper
+
+`llm-api/` stellt alle LLM_Client-Provider als REST-API bereit, deploybar als Docker-Container.
+
+### Endpunkte
+
+| Methode | Pfad | Beschreibung |
+|---|---|---|
+| `GET` | `/health` | Liveness-Check |
+| `GET` | `/providers` | Registrierte Provider + Presets |
+| `POST` | `/chat` | Prompt senden, Antwort empfangen |
+| `GET` | `/docs` | Swagger-UI (automatisch generiert) |
+
+### Starten
+
+```bash
+# Lokal
+pip install ".[all]" fastapi uvicorn
+cd llm-api && uvicorn api:app --reload
+
+# Docker Compose (empfohlen)
+docker compose -f llm-api/docker-compose.yml up --build
+```
+
+### Konfiguration
+
+| Env-Variable | Standard | Beschreibung |
+|---|---|---|
+| `LLM_CONFIG` | `../LLM_Client/config.json` | Pfad zur config.json |
+| `API_KEY` | (leer) | HTTP-Auth-Key; leer = keine Authentifizierung |
+
+### Architektur `llm-api/api.py`
+
+- `ChatRequest` / `ChatResponse` — Pydantic-Modelle
+- `_verify_api_key()` — optionale HTTP-Auth via `X-API-Key`-Header
+- `GET /health` — immer offen, kein Auth
+- `GET /providers` — listet Text- und Bild-Provider sowie Presets
+- `POST /chat` — löst Provider/Preset auf → `build_provider()` → `provider.send()` → optional `extract_json()`
+- `POST /image` — löst Bild-Provider/Preset auf → `image_build_provider()` → `provider.generate()` → `ImageResponse`
+
+### Tests
+
+```bash
+pip install httpx
+python -m pytest llm-api/tests/ -v
+```
 
 ---
 

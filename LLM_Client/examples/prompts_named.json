@@ -1,0 +1,22 @@
+{
+  "default": {
+    "system":  "Du bist ein hilfreicher Assistent.",
+    "context": "",
+    "task":    "Beantworte die Frage so präzise wie möglich."
+  },
+  "summarize": {
+    "system":  "Du bist ein Experte für Textzusammenfassungen.",
+    "context": "Hier den zu zusammenfassenden Text einfügen.",
+    "task":    "Fasse den obigen Text in maximal drei Stichpunkten zusammen."
+  },
+  "translate": {
+    "system":  "Du bist ein professioneller Übersetzer für Deutsch und Englisch.",
+    "context": "",
+    "task":    "Übersetze den folgenden Text präzise ins Englische."
+  },
+  "code_review": {
+    "system":  "Du bist ein erfahrener Software-Entwickler und Code-Reviewer.",
+    "context": "Hier den zu prüfenden Code einfügen.",
+    "task":    "Überprüfe den Code auf Fehler, Sicherheitsprobleme und Verbesserungsmöglichkeiten."
+  }
+}

@@ -86,6 +86,98 @@ print(provider.send("System", "", "Schreibe eine Funktion in Python."))
 mapping_reload("config.json")
 ```
 
+## API-Keys und Standard-Modelle setzen
+
+API-Keys und Standard-Modelle können direkt per CLI oder per Python-Funktion in die `config.json` geschrieben werden — ohne sie manuell im Editor zu öffnen.
+
+```bash
+# API-Key für einen Provider setzen
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key openai   "sk-..."
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key claude   "sk-ant-..."
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-api-key deepseek "sk-..."
+
+# Standard-Modell für einen Provider setzen
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-default-model openai   "gpt-4o-mini"
+python LLM_Client/llm_client.py --config LLM_Client/config.json --set-default-model deepseek "deepseek-reasoner"
+```
+
+Alle anderen Felder der Datei (andere Provider, Presets, Prompts) bleiben unverändert. Existiert der Provider-Eintrag noch nicht, wird er angelegt.
+
+```python
+from LLM_Client import set_api_key, set_default_model
+
+set_api_key("openai",   "sk-...",            "LLM_Client/config.json")
+set_api_key("claude",   "sk-ant-...",        "LLM_Client/config.json")
+
+set_default_model("openai",   "gpt-4o-mini",         "LLM_Client/config.json")
+set_default_model("deepseek", "deepseek-reasoner",    "LLM_Client/config.json")
+```
+
+---
+
+## Externe Prompt-Dateien
+
+Prompts können statt in `config.json` in einer separaten JSON-Datei verwaltet werden. Das ermöglicht beliebig viele wiederverwendbare Prompt-Sets ohne Änderungen an der Konfiguration.
+
+### Variante a — einzelnes Prompt-Set
+
+```json
+{
+  "system":  "Du bist ein Experte für Textzusammenfassungen.",
+  "context": "Optionaler Hintergrundtext.",
+  "task":    "Fasse den Kontext in drei Punkten zusammen."
+}
+```
+
+```bash
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --provider claude
+```
+
+### Variante b — mehrere benannte Prompt-Sets
+
+```json
+{
+  "summarize":   {"system": "...", "context": "...", "task": "Fasse zusammen."},
+  "translate":   {"system": "...", "context": "...", "task": "Übersetze ins Englische."},
+  "code_review": {"system": "...", "context": "...", "task": "Prüfe den Code."},
+  "default":     {"system": "...", "context": "...", "task": "Standard-Aufgabe."}
+}
+```
+
+```bash
+# Benanntes Set auswählen
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --prompts-name summarize
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json --prompts-name translate
+
+# Ohne --prompts-name: "default"-Set wird verwendet
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+
+# Mit Preset kombinierbar
+llm-client --config config.json --preset coding --prompts-file prompts.json --prompts-name code_review
+```
+
+### Programmatisch
+
+```python
+from LLM_Client import load_prompts_file, build_provider, load_config
+
+# Variante a
+prompts = load_prompts_file("prompts_single.json")
+
+# Variante b
+prompts = load_prompts_file("prompts_named.json", name="summarize")
+prompts = load_prompts_file("prompts_named.json", name="code_review")
+
+config   = load_config("config.json")
+provider = build_provider("openai", config)
+print(provider.send(**prompts))
+```
+
+Beispieldateien: `LLM_Client/examples/prompts_single.json` und `LLM_Client/examples/prompts_named.json`
+
+---
+
 ## Als importierbare Bibliothek
 
 ```python
@@ -104,6 +196,89 @@ print(antwort)
 config = load_config("LLM_Client/config.json")
 provider = build_provider("deepseek", config)
 print(provider.send("System", "", "Was ist 2+2?"))
+```
+
+---
+
+## URL-Inhalte automatisch abrufen (PDF, HTML, TXT)
+
+`fetch_context_urls(text)` erkennt HTTP(S)-URLs im `context`-Feld via Regex und ersetzt jede URL durch den tatsächlichen Inhalt des Dokuments — **automatisch**, ohne dass der Aufrufer das Dokument vorab herunterladen muss.
+
+### Unterstützte Formate
+
+| Typ | Erkennung | Extraktion |
+|---|---|---|
+| PDF | `Content-Type: application/pdf` oder `.pdf` | Seitentext via `pypdf` |
+| HTML | `Content-Type: text/html` oder `.html`/`.htm` | Lesbarer Text via `beautifulsoup4` (Fallback: Tag-Stripper) |
+| Text | alles andere | Rohtext direkt |
+
+### Abhängigkeiten
+
+```bash
+pip install ".[url-fetch]"          # requests + pypdf + beautifulsoup4
+# oder einzeln:
+pip install requests pypdf beautifulsoup4
+```
+
+### CLI — URL im Kontext
+
+```json
+// prompts.json
+{
+  "system":  "Du bist ein Experte für Textzusammenfassungen.",
+  "context": "https://example.com/bericht.pdf",
+  "task":    "Fasse den Inhalt in 5 Stichpunkten zusammen."
+}
+```
+
+```bash
+python LLM_Client/llm_client.py --config config.json --prompts-file prompts.json
+# → URL wird abgerufen, PDF-Text extrahiert und ans Modell übergeben
+```
+
+### Programmatisch
+
+```python
+from LLM_Client import fetch_context_urls, build_provider, load_config
+
+config   = load_config("LLM_Client/config.json")
+context  = fetch_context_urls("https://example.com/bericht.pdf")
+provider = build_provider("openai", config)
+
+antwort = provider.send(
+    system  = "Du bist ein Experte für Textzusammenfassungen.",
+    context = context,
+    task    = "Fasse den Inhalt in 5 Stichpunkten zusammen.",
+)
+print(antwort)
+```
+
+### Mehrere URLs im Kontext
+
+Alle URLs im Text werden aufgelöst, auch gemischt:
+
+```python
+ctx = """
+Jahresbericht:  https://example.com/report.pdf
+Produktseite:   https://example.com/produkt.html
+Changelog:      https://example.com/changes.txt
+"""
+resolved = fetch_context_urls(ctx)
+# → jede URL wird durch [Inhalt von <url>]\n<Text> ersetzt
+```
+
+### Über die REST-API
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "openai",
+    "system":   "Du bist ein Experte für Textzusammenfassungen.",
+    "context":  "https://example.com/bericht.pdf",
+    "task":     "Fasse den Inhalt in 5 Stichpunkten zusammen."
+  }'
+# Die API löst die URL automatisch auf — kein Client-Code nötig.
 ```
 
 ---
@@ -134,7 +309,8 @@ Grok, Kimi, DeepSeek, Groq und Mistral implementieren alle die OpenAI-kompatible
 pip install .                  # Basis (openai SDK, deckt 6 Provider ab)
 pip install ".[claude]"        # + anthropic
 pip install ".[gemini]"        # + google-generativeai
-pip install ".[all]"           # alle SDKs
+pip install ".[url-fetch]"     # + requests, pypdf, beautifulsoup4 (URL-Abruf)
+pip install ".[all]"           # alle SDKs + URL-Fetch
 ```
 
 Nach der Installation steht der CLI-Befehl `llm-client` überall zur Verfügung.
@@ -243,11 +419,24 @@ python llm_client.py --config config.json --provider mistral   --model codestral
 ### Alle CLI-Optionen
 
 ```
-usage: llm_client.py [-h] --config CONFIG [--provider PROVIDER] [--model MODEL]
+usage: llm_client.py [-h] --config CONFIG
+                     [--preset PRESET] [--provider PROVIDER] [--model MODEL]
+                     [--prompts-file PATH] [--prompts-name NAME]
+                     [--output DATEI] [--output-format {header,plain,json}]
+                     [--set-api-key PROVIDER KEY]
+                     [--set-default-model PROVIDER MODEL]
 
-  --config CONFIG     Pfad zur JSON-Konfigurationsdatei  (Pflichtfeld)
-  --provider          Anbieter überschreiben (siehe Tabelle oben)
-  --model             Modell überschreiben (optional)
+  --config CONFIG               Pfad zur JSON-Konfigurationsdatei  (Pflichtfeld)
+  --preset PRESET               Preset-Alias aus config.json (setzt Provider + Modell)
+  --provider PROVIDER           Anbieter überschreiben (überschreibt --preset)
+  --model MODEL                 Modell überschreiben (optional)
+  --prompts-file PATH           Externe JSON-Datei mit Prompts
+  --prompts-name NAME           Name des Prompt-Sets (für Variante b)
+  --output DATEI                Ausgabe zusätzlich in Datei schreiben
+  --output-format {header,plain,json}
+                                Format der Dateiausgabe (Standard: header)
+  --set-api-key PROVIDER KEY    API-Key in config.json schreiben und beenden
+  --set-default-model P MODEL   Standard-Modell in config.json schreiben und beenden
 ```
 
 ---
@@ -342,7 +531,81 @@ Wenn `context` leer ist, wird dieser Schritt vollständig übersprungen.
 
 ---
 
-## Beispiel-Ausgabe
+## Ausgabe-Modi
+
+Der Client unterstützt vier Ausgabe-Modi, gesteuert durch `--output` und `--output-format`.
+
+### a) Datei mit Header (Standard)
+
+Schreibt denselben Inhalt wie die Konsole in eine Datei:
+
+```bash
+python llm_client.py --config config.json --output ergebnis.txt --output-format header
+```
+
+Dateiinhalt:
+```
+Provider : openai
+Model    : gpt-4o
+System   : Du bist ein hilfreicher Assistent.
+Context  : (none)
+Task     : Erkläre Quantencomputing.
+------------------------------------------------------------
+Response:
+[Antwort des Modells]
+```
+
+### b) Datei ohne Header (nur Antwort-Text)
+
+Nur der rohe Antwort-Text — nützlich zur Weiterverarbeitung:
+
+```bash
+python llm_client.py --config config.json --output ergebnis.txt --output-format plain
+```
+
+### c) Nur Konsole
+
+Kein `--output`: Ausgabe erscheint wie bisher nur auf der Konsole.
+
+```bash
+python llm_client.py --config config.json
+```
+
+### d) JSON extrahieren
+
+Sinnvoll wenn der Task das Modell explizit zu JSON-Ausgabe auffordert. Alles außerhalb des JSON-Blocks (Erklärtext, Markdown-Wrapper) wird weggeschnitten.
+
+```bash
+# Konsole zeigt nur das extrahierte JSON
+python llm_client.py --config config.json --output-format json
+
+# Extrahiertes JSON in Datei schreiben
+python llm_client.py --config config.json --output ergebnis.json --output-format json
+```
+
+Der JSON-Extraktor erkennt:
+- Markdown-Code-Blöcke: ` ```json ... ``` ` und ` ``` ... ``` `
+- Rohe JSON-Objekte `{ ... }` und Arrays `[ ... ]`
+
+Wird kein gültiges JSON gefunden, gibt der Client eine Warnung auf `stderr` aus und zeigt die Originalantwort.
+
+### Programmatisch
+
+```python
+from LLM_Client import extract_json, format_output
+
+# Nur JSON extrahieren
+json_str = extract_json(response)           # raises ValueError wenn kein JSON
+
+# Ausgabe formatieren (für eigene Datei-Schreiblogik)
+content = format_output(response, header_lines, "header")  # → str mit Header
+content = format_output(response, header_lines, "plain")   # → nur Antwort-Text
+content = format_output(response, header_lines, "json")    # → nur JSON-Block
+```
+
+---
+
+## Beispiel-Ausgabe (Konsole)
 
 ```
 Provider : kimi
@@ -428,6 +691,7 @@ python -m unittest discover -s LLM_Client/unittest -p "test_*.py" -v
 | `test_groq.py` | GroqProvider — 7 Tests (inkl. verschiedene Modelle) |
 | `test_mistral.py` | MistralProvider — 7 Tests (inkl. codestral) |
 | `test_utils.py` | load_config, get_nested, build_provider — 13 Tests |
+| `test_output.py` | extract_json, format_output — 17 Tests |
 | `run_all_tests.py` | Runner-Skript für alle Tests zusammen |
 
 ---
@@ -445,7 +709,11 @@ examples/
 ├── run_kimi.ps1
 ├── run_deepseek.ps1
 ├── run_groq.ps1
-└── run_mistral.ps1
+├── run_mistral.ps1
+├── run_presets.ps1
+├── run_config_writer.ps1
+├── run_prompts_file.ps1
+└── run_output.ps1         ← alle vier Ausgabe-Modi (a/b/c/d)
 ```
 
 Jedes Skript definiert `$Config`, `$Provider` und `$Model` als Variablen und zeigt alle drei Aufrufmöglichkeiten (Script / Modul / CLI). Einfach das passende Skript öffnen, Variablen anpassen und ausführen.
